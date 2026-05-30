@@ -81,7 +81,14 @@ export function Panel(props: PanelProps): React.ReactElement {
         }
     })();
     return (
-        <Box flexDirection="column" borderStyle="round" borderColor={borderColor} paddingX={1} flexGrow={props.flexGrow} minHeight={props.minHeight}>
+        <Box
+            flexDirection="column"
+            borderStyle="single"
+            borderColor={borderColor}
+            paddingX={1}
+            flexGrow={props.flexGrow}
+            minHeight={props.minHeight}
+        >
             <Box marginBottom={0}>
                 <Text color={accent} bold>{props.title}</Text>
                 {props.focused
