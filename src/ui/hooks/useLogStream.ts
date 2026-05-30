@@ -10,10 +10,12 @@
 
 import {useEffect, useRef, useState} from 'react';
 
-import {follow} from '../../aws/logs.js';
+import {follow, tailLastLines} from '../../aws/logs.js';
 import type {LogLine} from '../../types.js';
 
 const MAX_LINES = 1000;
+// Number of historical lines to seed the panel with before live-tailing.
+const SEED_LINES = 50;
 
 export interface LogStreamState {
     lines: LogLine[];
@@ -47,29 +49,49 @@ export function useLogStream(region: string, logGroup: string | null): LogStream
         };
         flushTimer.current = setInterval(flush, 250);
 
+        let cancelled = false;
         (async () => {
+            // Seed with the most recent SEED_LINES lines (regardless of age),
+            // then live-tail forward from the newest seeded line so there's no
+            // gap and no duplicate refetch.
+            let cursor = Date.now();
+            try {
+                const seed = await tailLastLines(region, logGroup, SEED_LINES);
+                if (cancelled) return;
+                if (seed.length > 0) {
+                    setLines(seed);
+                    cursor = seed[seed.length - 1]!.timestamp.getTime() + 1;
+                }
+                setStarted(true);
+            } catch (err) {
+                if (!cancelled) {
+                    setError(err instanceof Error ? err.message : String(err));
+                    setStarted(true);
+                }
+            }
+
             try {
                 // onPoll flips `started` after the first completed poll cycle —
-                // so idle log groups (no lines yet) still show as connected
-                // instead of a permanent "connecting…". setStarted(true) is
-                // idempotent; React bails the re-render when the value is unchanged.
+                // so idle log groups still show as connected rather than a
+                // permanent "connecting…". setStarted(true) is idempotent.
                 const stream = follow(region, logGroup, {
                     signal: ctrl.signal,
                     intervalMs: 2500,
-                    sinceMs: Date.now() - 5 * 60_000,
+                    sinceMs: cursor,
                     onPoll: () => setStarted(true),
                 });
                 for await (const line of stream) {
                     bufferRef.current.push(line);
                 }
             } catch (err) {
-                setError(err instanceof Error ? err.message : String(err));
+                if (!cancelled) setError(err instanceof Error ? err.message : String(err));
             } finally {
-                setStarted(true);
+                if (!cancelled) setStarted(true);
             }
         })();
 
         return () => {
+            cancelled = true;
             ctrl.abort();
             if (flushTimer.current) clearInterval(flushTimer.current);
             flushTimer.current = null;

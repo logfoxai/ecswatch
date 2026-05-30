@@ -70,6 +70,81 @@ export async function tail(
     return lines.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 }
 
+/** Fetch every event in [start, end) (paginated), oldest-first. */
+async function fetchWindow(
+    region: string,
+    logGroup: string,
+    start: number,
+    end: number,
+    streamPrefix?: string,
+): Promise<LogLine[]> {
+    const lines: LogLine[] = [];
+    let nextToken: string | undefined;
+    do {
+        const out: FilterLogEventsCommandOutput = await logs(region).send(new FilterLogEventsCommand({
+            logGroupName: logGroup,
+            startTime: start,
+            endTime: end,
+            limit: 10_000,
+            nextToken,
+            ...(streamPrefix ? {logStreamNamePrefix: streamPrefix} : {}),
+        }));
+        for (const ev of out.events ?? []) {
+            const message = (ev.message ?? '').trimEnd();
+            lines.push({
+                timestamp: new Date(ev.timestamp ?? Date.now()),
+                message,
+                stream: ev.logStreamName ?? '',
+                severity: classify(message),
+            });
+        }
+        nextToken = out.nextToken;
+    } while (nextToken);
+    return lines.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+}
+
+export interface TailLastOptions {
+    streamPrefix?: string;
+    /** Cap how far back we'll widen the search. Default 7 days. */
+    maxLookbackMs?: number;
+}
+
+/**
+ * Return the most recent `n` log lines (oldest-first), regardless of how long
+ * ago they were emitted. FilterLogEvents is time-based and returns events
+ * oldest-first, so we can't ask for "last N" directly — instead we walk
+ * backward in expanding time windows (5m → 20m → 80m → …) until we've gathered
+ * at least `n` events or hit the lookback cap, then keep the newest `n`.
+ *
+ * Busy services resolve on the first (small) window; quiet ones widen, which is
+ * cheap precisely because there's little to page through.
+ */
+export async function tailLastLines(
+    region: string,
+    logGroup: string,
+    n: number,
+    opts: TailLastOptions = {},
+): Promise<LogLine[]> {
+    const maxLookback = opts.maxLookbackMs ?? 7 * 24 * 60 * 60_000;
+    const now = Date.now();
+    let end = now;
+    let windowMs = 5 * 60_000;
+    let collected: LogLine[] = [];
+
+    while (end > now - maxLookback) {
+        const start = Math.max(end - windowMs, now - maxLookback);
+        const batch = await fetchWindow(region, logGroup, start, end, opts.streamPrefix);
+        // Older window goes before what we already have (which is newer).
+        collected = batch.concat(collected);
+        if (collected.length >= n) break;
+        if (start <= now - maxLookback) break;
+        end = start;
+        windowMs *= 4;
+    }
+
+    return collected.slice(-n);
+}
+
 export interface FollowOptions {
     /** Poll cadence (ms). Defaults to 3s — same ballpark as ECS rollout polling. */
     intervalMs?: number;
