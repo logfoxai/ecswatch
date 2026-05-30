@@ -16,7 +16,7 @@ interface Props {
 export function EventsPanel({events, focused, maxRows}: Props): React.ReactElement {
     const visible = events.slice(0, maxRows);
     return (
-        <Panel title="3 · Events" focused={focused} accentKind="warning">
+        <Panel title="5 · Events" focused={focused} accentKind="warning" flexGrow={1}>
             {visible.length === 0 ? <Muted>(no events)</Muted> : null}
             {visible.map((e) => (
                 <Box key={e.id}>

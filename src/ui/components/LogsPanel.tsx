@@ -33,10 +33,10 @@ export function LogsPanel({lines, focused, maxRows, scroll, started, error, logG
 
     return (
         <Panel
-            title={`4 · Logs${logGroup ? '  ' + dim(logGroup) : ''}`}
+            title={`6 · Logs${logGroup ? '  ' + dim(logGroup) : ''}`}
             focused={focused}
             accentKind="accent"
-            flexGrow={focused ? 2 : 1}
+            flexGrow={1}
         >
             {!logGroup
                 ? <Muted>no log group resolved yet · check task definition</Muted>

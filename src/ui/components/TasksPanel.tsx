@@ -17,7 +17,7 @@ interface Props {
 export function TasksPanel({running, stopped, focused}: Props): React.ReactElement {
     const showStopped = stopped.slice(0, 3);
     return (
-        <Panel title="2 · Tasks" focused={focused} accentKind="accent">
+        <Panel title="3 · Tasks" focused={focused} accentKind="accent" flexGrow={1}>
             {running.length === 0
                 ? <Muted>(no running tasks)</Muted>
                 : running.map((t) => (

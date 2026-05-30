@@ -22,7 +22,7 @@ interface Props {
 
 export function DiagnosticsPanel({diagnostics, analysis, analyzing, focused, llmAvailable}: Props): React.ReactElement {
     return (
-        <Panel title="6 · Diagnostics" focused={focused} accentKind="error">
+        <Panel title="1 · Diagnostics" focused={focused} accentKind="error" flexGrow={1}>
             {diagnostics.length === 0
                 ? <Box><Text color={colors.success}>● </Text><Text color={colors.fg}>no issues detected</Text></Box>
                 : diagnostics.map((d) => (

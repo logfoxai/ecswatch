@@ -14,7 +14,7 @@ interface Props {
 
 export function DeploymentPanel({deployments, focused}: Props): React.ReactElement {
     return (
-        <Panel title="1 · Deployments" focused={focused} accentKind="primary">
+        <Panel title="4 · Deployments" focused={focused} accentKind="primary" flexGrow={1}>
             {deployments.length === 0 ? <Muted>(no deployments)</Muted> : null}
             {deployments.map((d) => (
                 <Box flexDirection="column" key={d.id} marginBottom={1}>

@@ -14,7 +14,7 @@ interface Props {
 
 export function HealthPanel({groups, focused}: Props): React.ReactElement {
     return (
-        <Panel title="5 · Target health" focused={focused} accentKind="success">
+        <Panel title="2 · Target health" focused={focused} accentKind="success" flexGrow={1}>
             {groups.length === 0 ? <Muted>(no target groups attached)</Muted> : null}
             {groups.map((g) => {
                 const counts: Record<string, number> = {};

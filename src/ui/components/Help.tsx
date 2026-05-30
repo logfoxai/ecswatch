@@ -10,7 +10,7 @@ interface Row {
 }
 
 const ROWS: Row[] = [
-    {keys: '1 / 2 / 3 / 4 / 5 / 6', desc: 'focus deployments · tasks · events · logs · target health · diagnostics'},
+    {keys: '1 / 2 / 3 / 4 / 5 / 6', desc: 'focus diagnostics · target health · tasks · deployments · events · logs'},
     {keys: 'r', desc: 'manual refresh now (otherwise polls every 5s)'},
     {keys: 'a', desc: 'run LLM-assisted root-cause analysis (falls back to heuristic if unavailable)'},
     {keys: 'p', desc: 'pause / resume log streaming'},
