@@ -11,12 +11,13 @@ interface Props {
     events: ServiceEventSnapshot[];
     focused: boolean;
     maxRows: number;
+    flexGrow?: number;
 }
 
-export function EventsPanel({events, focused, maxRows}: Props): React.ReactElement {
+export function EventsPanel({events, focused, maxRows, flexGrow}: Props): React.ReactElement {
     const visible = events.slice(0, maxRows);
     return (
-        <Panel title="5 · Events" focused={focused} accentKind="warning" flexGrow={1}>
+        <Panel title="5 · Events" focused={focused} accentKind="warning" flexGrow={flexGrow}>
             {visible.length === 0 ? <Muted>(no events)</Muted> : null}
             {visible.map((e) => (
                 <Box key={e.id}>

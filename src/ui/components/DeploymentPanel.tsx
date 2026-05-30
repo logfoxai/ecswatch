@@ -10,11 +10,12 @@ import type {DeploymentSnapshot} from '../../types.js';
 interface Props {
     deployments: DeploymentSnapshot[];
     focused: boolean;
+    flexGrow?: number;
 }
 
-export function DeploymentPanel({deployments, focused}: Props): React.ReactElement {
+export function DeploymentPanel({deployments, focused, flexGrow}: Props): React.ReactElement {
     return (
-        <Panel title="4 · Deployments" focused={focused} accentKind="primary" flexGrow={1}>
+        <Panel title="4 · Deployments" focused={focused} accentKind="primary" flexGrow={flexGrow}>
             {deployments.length === 0 ? <Muted>(no deployments)</Muted> : null}
             {deployments.map((d) => (
                 <Box flexDirection="column" key={d.id} marginBottom={1}>

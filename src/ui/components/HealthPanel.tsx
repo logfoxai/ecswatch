@@ -10,11 +10,12 @@ import type {TargetHealthSnapshot} from '../../types.js';
 interface Props {
     groups: TargetHealthSnapshot[];
     focused: boolean;
+    flexGrow?: number;
 }
 
-export function HealthPanel({groups, focused}: Props): React.ReactElement {
+export function HealthPanel({groups, focused, flexGrow}: Props): React.ReactElement {
     return (
-        <Panel title="2 · Target health" focused={focused} accentKind="success" flexGrow={1}>
+        <Panel title="2 · Target health" focused={focused} accentKind="success" flexGrow={flexGrow}>
             {groups.length === 0 ? <Muted>(no target groups attached)</Muted> : null}
             {groups.map((g) => {
                 const counts: Record<string, number> = {};

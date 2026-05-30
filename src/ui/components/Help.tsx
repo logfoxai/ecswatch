@@ -18,6 +18,7 @@ const ROWS: Row[] = [
     {keys: 'PgUp / PgDn', desc: 'when logs focused: scroll the log buffer one page'},
     {keys: 'g / G', desc: 'when logs focused: jump to oldest (g) / live tail (G)'},
     {keys: 'Esc', desc: 'when logs focused: jump back to the live tail'},
+    {keys: 'm', desc: 'toggle the full keybind menu (when the footer is collapsed on a narrow terminal)'},
     {keys: '?', desc: 'toggle this help overlay'},
     {keys: 'q / ctrl-c', desc: 'quit'},
 ];

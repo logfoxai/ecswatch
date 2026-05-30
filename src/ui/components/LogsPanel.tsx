@@ -21,9 +21,10 @@ interface Props {
     started: boolean;
     error: string | null;
     logGroup: string | null;
+    flexGrow?: number;
 }
 
-export function LogsPanel({lines, focused, maxRows, scroll, started, error, logGroup}: Props): React.ReactElement {
+export function LogsPanel({lines, focused, maxRows, scroll, started, error, logGroup, flexGrow}: Props): React.ReactElement {
     // viewport bottom is `scroll` lines up from the end; window is maxRows tall.
     const end = Math.max(0, lines.length - scroll);
     const start = Math.max(0, end - maxRows);
@@ -36,7 +37,7 @@ export function LogsPanel({lines, focused, maxRows, scroll, started, error, logG
             title={`6 · Logs${logGroup ? '  ' + dim(logGroup) : ''}`}
             focused={focused}
             accentKind="accent"
-            flexGrow={1}
+            flexGrow={flexGrow}
         >
             {!logGroup
                 ? <Muted>no log group resolved yet · check task definition</Muted>

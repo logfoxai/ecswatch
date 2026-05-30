@@ -35,6 +35,13 @@ type Focus = 'deployments' | 'tasks' | 'events' | 'logs' | 'health' | 'diagnosti
 // because it's derived from the live row count.
 const TOP_CHROME = 24;
 
+// In the stacked (narrow) layout the four short panels are full-height-stacked
+// above Events/Logs, so the overhead before the bottom two is larger.
+const NARROW_TOP_CHROME = 34;
+
+// Width breakpoint: below this we stack panels into a single column.
+const NARROW_COLS = 100;
+
 interface AppProps {
     ctx: CliContext;
 }
@@ -44,6 +51,7 @@ export function App({ctx}: AppProps): React.ReactElement {
     const {stdout} = useStdout();
     const [focus, setFocus] = useState<Focus>('deployments');
     const [showHelp, setShowHelp] = useState(false);
+    const [showMenu, setShowMenu] = useState(false);
     const [logsPaused, setLogsPaused] = useState(false);
     // Logs scroll offset, measured in lines *up from the live tail*.
     //   0           → following the newest line (LIVE)
@@ -54,11 +62,17 @@ export function App({ctx}: AppProps): React.ReactElement {
     const logs = useLogStream(ctx.region, logsPaused ? null : state.logGroup);
 
     const rows = stdout?.rows ?? 40;
-    // Top grid is two short panel-rows; Events + Logs share the remaining
-    // vertical space equally at the bottom. Estimate the header + top-grid +
-    // footer overhead and hand the rest to the bottom panels (same value for
-    // both so they render at identical heights).
-    const bottomRows = Math.max(6, rows - TOP_CHROME);
+    const cols = stdout?.columns ?? 80;
+    // Below NARROW_COLS the 2×2 grid can't hold readable columns, so we stack
+    // every panel into a single full-width column instead.
+    const narrow = cols < NARROW_COLS;
+    // Events + Logs share the remaining vertical space. In the wide grid they
+    // sit side-by-side (one bottom row), so each gets `rows - TOP_CHROME`. When
+    // stacked, the four short panels eat more height and Events/Logs split
+    // what's left, so each gets roughly half.
+    const bottomRows = narrow
+        ? Math.max(4, Math.floor((rows - NARROW_TOP_CHROME) / 2))
+        : Math.max(6, rows - TOP_CHROME);
 
     // Keep the viewport anchored to the same lines when new logs stream in.
     // If the user has scrolled up (offset > 0), bump the offset by however many
@@ -92,6 +106,7 @@ export function App({ctx}: AppProps): React.ReactElement {
 
         if (input === 'r') { void state.refresh(); return; }
         if (input === '?') { setShowHelp((v) => !v); return; }
+        if (input === 'm') { setShowMenu((v) => !v); return; }
         if (input === 'p') { setLogsPaused((v) => !v); return; }
         if (input === 'a') {
             // Manually trigger an analysis with the current log buffer.
@@ -122,74 +137,92 @@ export function App({ctx}: AppProps): React.ReactElement {
 
     const llmReady = useMemo(() => llmConfigured(), []);
 
-    // Layout (numbers = focus keys, left→right top→bottom):
-    //   ┌ 1 Diagnostics    │ 2 Target health ┐   top grid (short, natural height)
-    //   ├ 3 Tasks          │ 4 Deployments   ┤
-    //   ├ 5 Events         │ 6 Logs          ┤   bottom row (flexGrow, equal halves)
-    //   └ Footer ──────────────────────────┘
+    // Panel elements built once; the layout below arranges them as a 2×2 grid
+    // over a wide Events/Logs row (wide) or a single stacked column (narrow).
+    // In the grid, the four short panels flexGrow to match their row sibling's
+    // height; stacked, they stay at natural height and only Events/Logs grow.
+    const shortGrow = narrow ? undefined : 1;
+    const diagnostics = (
+        <DiagnosticsPanel
+            diagnostics={state.diagnostics}
+            analysis={state.rootCauseAnalysis}
+            analyzing={state.rootCauseLoading}
+            focused={focus === 'diagnostics'}
+            llmAvailable={llmReady}
+            flexGrow={shortGrow}
+        />
+    );
+    const health = (
+        <HealthPanel groups={state.targetHealth} focused={focus === 'health'} flexGrow={shortGrow} />
+    );
+    const tasks = (
+        <TasksPanel running={state.runningTasks} stopped={state.stoppedTasks} focused={focus === 'tasks'} flexGrow={shortGrow} />
+    );
+    const deployments = (
+        <DeploymentPanel deployments={state.service?.deployments ?? []} focused={focus === 'deployments'} flexGrow={shortGrow} />
+    );
+    const events = (
+        <EventsPanel events={state.service?.events ?? []} focused={focus === 'events'} maxRows={bottomRows} flexGrow={1} />
+    );
+    const logs2 = (
+        <LogsPanel
+            lines={logs.lines}
+            focused={focus === 'logs'}
+            maxRows={bottomRows}
+            scroll={logScroll}
+            started={logs.started}
+            error={logs.error}
+            logGroup={state.logGroup}
+            flexGrow={1}
+        />
+    );
+
     // height={rows} makes the app own the full alt-screen viewport; the bottom
-    // row's flexGrow eats the remaining height and pins the footer to the bottom.
+    // (flexGrow) region eats the remaining height and pins the footer down.
     return (
         <Box flexDirection="column" height={rows}>
             <HeaderBar service={state.service} lastFetchedAt={state.lastFetchedAt} error={state.error} />
             {showHelp ? <Help /> : null}
 
-            <Box flexDirection="row">
-                <Box flexBasis={0} flexGrow={1} flexDirection="column" overflow="hidden">
-                    <DiagnosticsPanel
-                        diagnostics={state.diagnostics}
-                        analysis={state.rootCauseAnalysis}
-                        analyzing={state.rootCauseLoading}
-                        focused={focus === 'diagnostics'}
-                        llmAvailable={llmReady}
-                    />
+            {narrow ? (
+                // Stacked single column. Events/Logs grow to fill leftover height.
+                <Box flexDirection="column" flexGrow={1}>
+                    {diagnostics}
+                    {health}
+                    {tasks}
+                    {deployments}
+                    {events}
+                    {logs2}
                 </Box>
-                <Box flexBasis={0} flexGrow={1} flexDirection="column" overflow="hidden">
-                    <HealthPanel
-                        groups={state.targetHealth}
-                        focused={focus === 'health'}
-                    />
-                </Box>
-            </Box>
+            ) : (
+                <>
+                    <Box flexDirection="row">
+                        <GridCell>{diagnostics}</GridCell>
+                        <GridCell>{health}</GridCell>
+                    </Box>
+                    <Box flexDirection="row">
+                        <GridCell>{tasks}</GridCell>
+                        <GridCell>{deployments}</GridCell>
+                    </Box>
+                    <Box flexDirection="row" flexGrow={1}>
+                        <GridCell>{events}</GridCell>
+                        <GridCell>{logs2}</GridCell>
+                    </Box>
+                </>
+            )}
 
-            <Box flexDirection="row">
-                <Box flexBasis={0} flexGrow={1} flexDirection="column" overflow="hidden">
-                    <TasksPanel
-                        running={state.runningTasks}
-                        stopped={state.stoppedTasks}
-                        focused={focus === 'tasks'}
-                    />
-                </Box>
-                <Box flexBasis={0} flexGrow={1} flexDirection="column" overflow="hidden">
-                    <DeploymentPanel
-                        deployments={state.service?.deployments ?? []}
-                        focused={focus === 'deployments'}
-                    />
-                </Box>
-            </Box>
+            <Footer showMenu={showMenu} />
+        </Box>
+    );
+}
 
-            <Box flexDirection="row" flexGrow={1}>
-                <Box flexBasis={0} flexGrow={1} flexDirection="column" overflow="hidden">
-                    <EventsPanel
-                        events={state.service?.events ?? []}
-                        focused={focus === 'events'}
-                        maxRows={bottomRows}
-                    />
-                </Box>
-                <Box flexBasis={0} flexGrow={1} flexDirection="column" overflow="hidden">
-                    <LogsPanel
-                        lines={logs.lines}
-                        focused={focus === 'logs'}
-                        maxRows={bottomRows}
-                        scroll={logScroll}
-                        started={logs.started}
-                        error={logs.error}
-                        logGroup={state.logGroup}
-                    />
-                </Box>
-            </Box>
-
-            <Footer />
+/** Equal-width grid column wrapper. flexBasis:0 + flexGrow:1 makes the two
+ *  columns split the row evenly; overflow hidden guards against any stray
+ *  content from widening a cell past its half. */
+function GridCell({children}: {children: React.ReactNode}): React.ReactElement {
+    return (
+        <Box flexBasis={0} flexGrow={1} flexDirection="column" overflow="hidden">
+            {children}
         </Box>
     );
 }

@@ -18,11 +18,12 @@ interface Props {
     analyzing: boolean;
     focused: boolean;
     llmAvailable: boolean;
+    flexGrow?: number;
 }
 
-export function DiagnosticsPanel({diagnostics, analysis, analyzing, focused, llmAvailable}: Props): React.ReactElement {
+export function DiagnosticsPanel({diagnostics, analysis, analyzing, focused, llmAvailable, flexGrow}: Props): React.ReactElement {
     return (
-        <Panel title="1 · Diagnostics" focused={focused} accentKind="error" flexGrow={1}>
+        <Panel title="1 · Diagnostics" focused={focused} accentKind="error" flexGrow={flexGrow}>
             {diagnostics.length === 0
                 ? <Box><Text color={colors.success}>● </Text><Text color={colors.fg}>no issues detected</Text></Box>
                 : diagnostics.map((d) => (
