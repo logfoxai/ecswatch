@@ -14,6 +14,7 @@ interface Props {
 }
 
 export function DeploymentPanel({deployments, focused, flexGrow}: Props): React.ReactElement {
+
     return (
         <Panel title="4 · Deployments" focused={focused} accentKind="primary" flexGrow={flexGrow}>
             {deployments.length === 0 ? <Muted>(no deployments)</Muted> : null}
@@ -47,28 +48,38 @@ export function DeploymentPanel({deployments, focused, flexGrow}: Props): React.
             ))}
         </Panel>
     );
+
 }
 
 function statusKind(s: string): 'primary' | 'info' | 'warning' {
+
     if (s === 'PRIMARY') return 'primary';
     if (s === 'ACTIVE') return 'info';
     return 'warning';
+
 }
 
 function rolloutKind(s: string): 'success' | 'rolling' | 'error' | 'warning' {
+
     switch (s) {
+
         case 'COMPLETED': return 'success';
         case 'IN_PROGRESS': return 'rolling';
         case 'FAILED': return 'error';
         default: return 'warning';
-    }
+
+}
+
 }
 
 function relTime(d: Date): string {
+
     const diff = Date.now() - d.getTime();
     const s = Math.round(diff / 1000);
+
     if (s < 60) return `${s}s ago`;
     if (s < 3600) return `${Math.round(s / 60)}m ago`;
     if (s < 86400) return `${Math.round(s / 3600)}h ago`;
     return `${Math.round(s / 86400)}d ago`;
+
 }

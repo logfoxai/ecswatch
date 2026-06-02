@@ -34,15 +34,18 @@ interface Props {
 }
 
 function KeyHint({k}: {k: Key}): React.ReactElement {
+
     return (
         <Text>
             <Text color={colors.primary} bold>{k.keys}</Text>
             <Text color={colors.muted}> {k.label}</Text>
         </Text>
     );
+
 }
 
 export function Footer({showMenu}: Props): React.ReactElement {
+
     const {stdout} = useStdout();
     const cols = stdout?.columns ?? 80;
 
@@ -53,6 +56,7 @@ export function Footer({showMenu}: Props): React.ReactElement {
     const fitsFullAndAd = avail >= keysWidth + AD_TEXT.length + AD_GAP;
 
     if (fitsFull) {
+
         return (
             <Box paddingX={1} width="100%" justifyContent="space-between">
                 <Box>
@@ -66,10 +70,12 @@ export function Footer({showMenu}: Props): React.ReactElement {
                 {fitsFullAndAd ? <Text color={colors.dim}>{osc8(AD_URL, AD_TEXT)}</Text> : null}
             </Box>
         );
-    }
+
+}
 
     // Cramped: either the expanded (wrapped) list, or a compact hint.
     if (showMenu) {
+
         return (
             <Box paddingX={1} flexWrap="wrap">
                 {KEYS.map((k, i) => (
@@ -80,7 +86,8 @@ export function Footer({showMenu}: Props): React.ReactElement {
                 ))}
             </Box>
         );
-    }
+
+}
 
     return (
         <Box paddingX={1}>
@@ -89,4 +96,5 @@ export function Footer({showMenu}: Props): React.ReactElement {
             <KeyHint k={{keys: 'q', label: 'quit'}} />
         </Box>
     );
+
 }

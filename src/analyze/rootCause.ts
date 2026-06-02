@@ -49,11 +49,15 @@ const SYSTEM_PROMPT = [
 ].join('\n');
 
 export async function rootCause(input: AnalyzeInput): Promise<RootCauseAnalysis> {
+
     // If nothing looks wrong, skip the LLM call entirely; we already know.
     const hasFailure = input.diagnostics.some((d) => d.severity === 'error');
+
     if (!hasFailure) {
+
         return heuristicSummary(input);
-    }
+
+}
 
     if (!llmConfigured()) return heuristicSummary(input);
 
@@ -66,16 +70,20 @@ export async function rootCause(input: AnalyzeInput): Promise<RootCauseAnalysis>
     });
 
     if (result.status !== 'ok') {
+
         // Degrade silently — the heuristic summary always works.
         const fallback = heuristicSummary(input);
+
         return {
             ...fallback,
             // Leave a breadcrumb so the user knows we tried.
             summary: `${fallback.summary} (LLM unavailable; using heuristic analysis)`,
         };
-    }
+
+}
 
     const parsed = parseLlmResponse(result.text);
+
     return {
         source: 'llm',
         model: `${result.provider}:${result.model}`,
@@ -84,10 +92,13 @@ export async function rootCause(input: AnalyzeInput): Promise<RootCauseAnalysis>
         suggestedFixes: parsed.fixes,
         elapsedMs: Date.now() - start,
     };
+
 }
 
 function buildPromptPayload(input: AnalyzeInput): unknown {
+
     const svc = input.service;
+
     return {
         service: {
             name: svc.serviceName,
@@ -148,14 +159,18 @@ function buildPromptPayload(input: AnalyzeInput): unknown {
             message: l.message.slice(0, 500),
         })),
     };
+
 }
 
 function pickInterestingLogs(logs: LogLine[], cap: number): LogLine[] {
+
     const errors = logs.filter((l) => l.severity === 'error');
     const warns = logs.filter((l) => l.severity === 'warn');
     const rest = logs.filter((l) => l.severity !== 'error' && l.severity !== 'warn');
     const picked = [...errors, ...warns, ...rest.slice(-cap)];
+
     return picked.slice(-cap).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
 }
 
 interface ParsedLlm {
@@ -165,42 +180,64 @@ interface ParsedLlm {
 }
 
 function parseLlmResponse(text: string): ParsedLlm {
+
     let summary = '';
     const causes: string[] = [];
     const fixes: string[] = [];
     let section: 'summary' | 'causes' | 'fixes' | null = null;
 
     for (const rawLine of text.split('\n')) {
+
         const line = rawLine.trimEnd();
+
         if (!line.trim()) continue;
         const upper = line.toUpperCase();
+
         if (upper.startsWith('SUMMARY:')) {
+
             section = 'summary';
             summary = line.slice('SUMMARY:'.length).trim();
             continue;
-        }
-        if (upper.startsWith('CAUSES:')) { section = 'causes'; continue; }
-        if (upper.startsWith('FIXES:')) { section = 'fixes'; continue; }
+
+}
+        if (upper.startsWith('CAUSES:')) {
+
+ section = 'causes'; continue;
+
+}
+        if (upper.startsWith('FIXES:')) {
+
+ section = 'fixes'; continue;
+
+}
 
         if (section === 'summary' && !summary) {
+
             summary = line.trim();
             continue;
-        }
+
+}
         const bullet = line.replace(/^[-*•]\s*/, '').trim();
+
         if (!bullet) continue;
         if (section === 'causes') causes.push(bullet);
         else if (section === 'fixes') fixes.push(bullet);
-    }
+
+}
 
     return {summary, causes, fixes};
+
 }
 
 function heuristicSummary(input: AnalyzeInput): RootCauseAnalysis {
+
     const errors = input.diagnostics.filter((d) => d.severity === 'error');
     const warns = input.diagnostics.filter((d) => d.severity === 'warn');
 
     if (errors.length === 0 && warns.length === 0) {
+
         const svc = input.service;
+
         return {
             source: 'heuristic',
             summary: `${svc.serviceName} looks healthy — ${svc.runningCount}/${svc.desiredCount} running.`,
@@ -208,7 +245,8 @@ function heuristicSummary(input: AnalyzeInput): RootCauseAnalysis {
             suggestedFixes: [],
             elapsedMs: 0,
         };
-    }
+
+}
 
     const summary = errors[0]?.title ?? warns[0]?.title ?? 'Service degraded.';
     const causes = [...errors, ...warns].slice(0, 5).map((d) => `${d.title}: ${d.detail}`);
@@ -224,4 +262,5 @@ function heuristicSummary(input: AnalyzeInput): RootCauseAnalysis {
         suggestedFixes: fixes,
         elapsedMs: 0,
     };
+
 }

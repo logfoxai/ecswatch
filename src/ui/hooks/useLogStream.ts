@@ -25,6 +25,7 @@ export interface LogStreamState {
 }
 
 export function useLogStream(region: string, logGroup: string | null): LogStreamState {
+
     const [lines, setLines] = useState<LogLine[]>([]);
     const [started, setStarted] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -32,45 +33,66 @@ export function useLogStream(region: string, logGroup: string | null): LogStream
     const flushTimer = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
+
         if (!logGroup) return;
         const ctrl = new AbortController();
 
         // Batch flushes so we don't trigger a React render per log line —
         // a noisy app can produce 100s/sec and Ink will choke if we re-render
         // each time. 250ms gives the feel of "live" without the cost.
-        const flush = () => {
+        const flush = (): void => {
+
             if (bufferRef.current.length === 0) return;
             const next = bufferRef.current;
+
             bufferRef.current = [];
             setLines((prev) => {
+
                 const combined = prev.concat(next);
+
                 return combined.length > MAX_LINES ? combined.slice(combined.length - MAX_LINES) : combined;
-            });
-        };
+
+});
+
+};
+
         flushTimer.current = setInterval(flush, 250);
 
         let cancelled = false;
+
         (async () => {
+
             // Seed with the most recent SEED_LINES lines (regardless of age),
             // then live-tail forward from the newest seeded line so there's no
             // gap and no duplicate refetch.
             let cursor = Date.now();
-            try {
-                const seed = await tailLastLines(region, logGroup, SEED_LINES);
-                if (cancelled) return;
-                if (seed.length > 0) {
-                    setLines(seed);
-                    cursor = seed[seed.length - 1]!.timestamp.getTime() + 1;
-                }
-                setStarted(true);
-            } catch (err) {
-                if (!cancelled) {
-                    setError(err instanceof Error ? err.message : String(err));
-                    setStarted(true);
-                }
-            }
 
             try {
+
+                const seed = await tailLastLines(region, logGroup, SEED_LINES);
+
+                if (cancelled) return;
+                if (seed.length > 0) {
+
+                    setLines(seed);
+                    cursor = seed[seed.length - 1]!.timestamp.getTime() + 1;
+
+}
+                setStarted(true);
+
+} catch (err) {
+
+                if (!cancelled) {
+
+                    setError(err instanceof Error ? err.message : String(err));
+                    setStarted(true);
+
+}
+
+}
+
+            try {
+
                 // onPoll flips `started` after the first completed poll cycle —
                 // so idle log groups still show as connected rather than a
                 // permanent "connecting…". setStarted(true) is idempotent.
@@ -80,24 +102,37 @@ export function useLogStream(region: string, logGroup: string | null): LogStream
                     sinceMs: cursor,
                     onPoll: () => setStarted(true),
                 });
+
                 for await (const line of stream) {
+
                     bufferRef.current.push(line);
-                }
-            } catch (err) {
+
+}
+
+} catch (err) {
+
                 if (!cancelled) setError(err instanceof Error ? err.message : String(err));
-            } finally {
+
+} finally {
+
                 if (!cancelled) setStarted(true);
-            }
-        })();
+
+}
+
+})();
 
         return () => {
+
             cancelled = true;
             ctrl.abort();
             if (flushTimer.current) clearInterval(flushTimer.current);
             flushTimer.current = null;
             bufferRef.current = [];
-        };
-    }, [region, logGroup]);
+
+};
+
+}, [region, logGroup]);
 
     return {lines, started, error};
+
 }

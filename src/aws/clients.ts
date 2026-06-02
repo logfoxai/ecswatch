@@ -18,37 +18,57 @@ const elbClients = new Map<string, ElasticLoadBalancingV2Client>();
 const stsClients = new Map<string, STSClient>();
 
 export function ecs(region: string): ECSClient {
+
     let c = ecsClients.get(region);
+
     if (!c) {
+
         c = new ECSClient({region, maxAttempts: 3});
         ecsClients.set(region, c);
-    }
+
+}
     return c;
+
 }
 
 export function logs(region: string): CloudWatchLogsClient {
+
     let c = logsClients.get(region);
+
     if (!c) {
+
         c = new CloudWatchLogsClient({region, maxAttempts: 3});
         logsClients.set(region, c);
-    }
+
+}
     return c;
+
 }
 
 export function elb(region: string): ElasticLoadBalancingV2Client {
+
     let c = elbClients.get(region);
+
     if (!c) {
+
         c = new ElasticLoadBalancingV2Client({region, maxAttempts: 3});
         elbClients.set(region, c);
-    }
+
+}
     return c;
+
 }
 
 export function sts(region: string): STSClient {
+
     let c = stsClients.get(region);
+
     if (!c) {
+
         c = new STSClient({region, maxAttempts: 3});
         stsClients.set(region, c);
-    }
+
+}
     return c;
+
 }

@@ -7,5 +7,7 @@ export const AD_TEXT = 'Logfox — Sniff out issues. AI-powered log observabilit
 
 /** Wrap text in an OSC 8 hyperlink (clickable in modern terminals). */
 export function osc8(url: string, text: string): string {
+
     return `\x1b]8;;${url}\x07${text}\x1b]8;;\x07`;
+
 }

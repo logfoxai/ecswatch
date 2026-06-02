@@ -20,19 +20,27 @@ export const ci = {
 };
 
 function escape(value: string): string {
+
     return value.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+
 }
 
 function escapeProp(value: string): string {
+
     return escape(value).replace(/:/g, '%3A').replace(/,/g, '%2C');
+
 }
 
 export function group(title: string): void {
+
     if (IN_GITHUB) process.stdout.write(`::group::${escape(title)}\n`);
+
 }
 
 export function endGroup(): void {
+
     if (IN_GITHUB) process.stdout.write('::endgroup::\n');
+
 }
 
 interface AnnotationProps {
@@ -43,33 +51,48 @@ interface AnnotationProps {
 }
 
 function fmtProps(props: AnnotationProps | undefined): string {
+
     if (!props) return '';
     const parts: string[] = [];
+
     if (props.title) parts.push(`title=${escapeProp(props.title)}`);
     if (props.file) parts.push(`file=${escapeProp(props.file)}`);
     if (props.line) parts.push(`line=${props.line}`);
     if (props.col) parts.push(`col=${props.col}`);
     return parts.length === 0 ? '' : ` ${parts.join(',')}`;
+
 }
 
 export function notice(message: string, props?: AnnotationProps): void {
+
     if (IN_GITHUB) process.stdout.write(`::notice${fmtProps(props)}::${escape(message)}\n`);
+
 }
 
 export function warning(message: string, props?: AnnotationProps): void {
+
     if (IN_GITHUB) process.stdout.write(`::warning${fmtProps(props)}::${escape(message)}\n`);
+
 }
 
 export function error(message: string, props?: AnnotationProps): void {
+
     if (IN_GITHUB) process.stdout.write(`::error${fmtProps(props)}::${escape(message)}\n`);
+
 }
 
 /** Wrap a chunk of work in a collapsible CI group; safe no-op outside CI. */
 export async function withGroup<T>(title: string, fn: () => Promise<T> | T): Promise<T> {
+
     group(title);
     try {
+
         return await fn();
-    } finally {
+
+} finally {
+
         endGroup();
-    }
+
+}
+
 }

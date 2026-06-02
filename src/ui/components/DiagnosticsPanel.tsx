@@ -21,7 +21,10 @@ interface Props {
     flexGrow?: number;
 }
 
-export function DiagnosticsPanel({diagnostics, analysis, analyzing, focused, llmAvailable, flexGrow}: Props): React.ReactElement {
+export function DiagnosticsPanel({
+    diagnostics, analysis, analyzing, focused, llmAvailable, flexGrow,
+}: Props): React.ReactElement {
+
     return (
         <Panel title="1 · Diagnostics" focused={focused} accentKind="error" flexGrow={flexGrow}>
             {diagnostics.length === 0
@@ -79,8 +82,11 @@ export function DiagnosticsPanel({diagnostics, analysis, analyzing, focused, llm
             </Box>
         </Panel>
     );
+
 }
 
 function truncate(s: string, n: number): string {
-    return s.length <= n ? s : s.slice(0, n - 1) + '…';
+
+    return s.length <= n ? s : `${s.slice(0, n - 1)}…`;
+
 }
