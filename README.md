@@ -1,5 +1,10 @@
 # ecswatch
 
+[![build status](https://github.com/logfoxai/ecswatch/actions/workflows/release.yml/badge.svg)](https://github.com/logfoxai/ecswatch/actions)
+[![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue)]()
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
+[![AutoRel](https://img.shields.io/badge/%F0%9F%9A%80%20AutoRel-2D4DDE)](https://github.com/mhweiner/autorel)
+
 A keen, low-friction watcher for AWS ECS services. CI-friendly streaming for GitHub Actions; full-color interactive TUI when you're at a real terminal; optional LLM-assisted root-cause analysis when something breaks.
 
 - **CI mode** (`ci.yml` friendly): streams ECS events, prints colored rollout progress, exits non-zero on failure, and emits GitHub Actions annotations (`::group::`, `::error::`, `::notice::`) so failed deploys surface inline in PR checks.
