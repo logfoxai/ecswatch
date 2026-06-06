@@ -10,7 +10,7 @@
 
 import {useEffect, useRef, useState} from 'react';
 
-import {follow, tailLastLines} from '../../aws/logs.js';
+import {follow, tailAcrossStreams, tailLastLines} from '../../aws/logs.js';
 import type {LogLine} from '../../types.js';
 
 const MAX_LINES = 1000;
@@ -69,12 +69,21 @@ export function useLogStream(region: string, logGroup: string | null): LogStream
 
             try {
 
-                const seed = await tailLastLines(region, logGroup, SEED_LINES);
+                // Seed across *all* task streams so every running / just-stopped
+                // task shows on first paint — not just whichever task is
+                // chattiest. Fall back to the most-recent lines (any age) for a
+                // quiet service with nothing in the recent window.
+                let seed = await tailAcrossStreams(region, logGroup, {
+                    sinceMs: Date.now() - (30 * 60_000),
+                    perStream: SEED_LINES,
+                });
+
+                if (seed.length === 0) seed = await tailLastLines(region, logGroup, SEED_LINES);
 
                 if (cancelled) return;
                 if (seed.length > 0) {
 
-                    setLines(seed);
+                    setLines(seed.length > MAX_LINES ? seed.slice(seed.length - MAX_LINES) : seed);
                     cursor = seed[seed.length - 1]!.timestamp.getTime() + 1;
 
 }
