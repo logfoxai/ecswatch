@@ -15,7 +15,9 @@ interface Props {
 }
 
 export function EventsPanel({events, focused, maxRows, flexGrow}: Props): React.ReactElement {
+
     const visible = events.slice(0, maxRows);
+
     return (
         <Panel title="5 · Events" focused={focused} accentKind="warning" flexGrow={flexGrow}>
             {visible.length === 0 ? <Muted>(no events)</Muted> : null}
@@ -27,22 +29,31 @@ export function EventsPanel({events, focused, maxRows, flexGrow}: Props): React.
             ))}
         </Panel>
     );
+
 }
 
 function severityColor(s: ServiceEventSnapshot['severity']): string {
+
     switch (s) {
+
         case 'error': return colors.error;
         case 'warn': return colors.warning;
         case 'success': return colors.success;
         case 'info':
         default: return colors.info;
-    }
+
+}
+
 }
 
 function stamp(d: Date): string {
+
     return d.toISOString().replace('T', ' ').slice(5, 19);
+
 }
 
 function truncate(s: string, n: number): string {
-    return s.length <= n ? s : s.slice(0, n - 1) + '…';
+
+    return s.length <= n ? s : `${s.slice(0, n - 1)}…`;
+
 }

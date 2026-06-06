@@ -18,11 +18,14 @@ import {logs} from './clients.js';
 import type {LogLine} from '../types.js';
 
 function classify(message: string): LogLine['severity'] {
+
     const m = message.toLowerCase();
+
     if (m.includes('error') || m.includes('exception') || m.includes('fatal') || m.includes('panic')) return 'error';
     if (m.includes('warn') || m.includes('warning')) return 'warn';
     if (m.includes('debug') || m.includes('trace')) return 'debug';
     return 'info';
+
 }
 
 export interface TailOptions {
@@ -39,13 +42,15 @@ export async function tail(
     logGroup: string,
     opts: TailOptions = {},
 ): Promise<LogLine[]> {
-    const start = opts.sinceMs ?? Date.now() - 10 * 60_000;
+
+    const start = opts.sinceMs ?? (Date.now() - (10 * 60_000));
     const limit = opts.limit ?? 200;
     const lines: LogLine[] = [];
     let nextToken: string | undefined;
     let collected = 0;
 
     do {
+
         const out: FilterLogEventsCommandOutput = await logs(region).send(new FilterLogEventsCommand({
             logGroupName: logGroup,
             startTime: start,
@@ -53,8 +58,11 @@ export async function tail(
             nextToken,
             ...(opts.streamPrefix ? {logStreamNamePrefix: opts.streamPrefix} : {}),
         }));
+
         for (const ev of out.events ?? []) {
+
             const message = (ev.message ?? '').trimEnd();
+
             lines.push({
                 timestamp: new Date(ev.timestamp ?? Date.now()),
                 message,
@@ -63,11 +71,14 @@ export async function tail(
             });
             collected++;
             if (collected >= limit) break;
-        }
+
+}
         nextToken = collected >= limit ? undefined : out.nextToken;
-    } while (nextToken);
+
+} while (nextToken);
 
     return lines.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
 }
 
 /** Fetch every event in [start, end) (paginated), oldest-first. */
@@ -78,9 +89,12 @@ async function fetchWindow(
     end: number,
     streamPrefix?: string,
 ): Promise<LogLine[]> {
+
     const lines: LogLine[] = [];
     let nextToken: string | undefined;
+
     do {
+
         const out: FilterLogEventsCommandOutput = await logs(region).send(new FilterLogEventsCommand({
             logGroupName: logGroup,
             startTime: start,
@@ -89,18 +103,24 @@ async function fetchWindow(
             nextToken,
             ...(streamPrefix ? {logStreamNamePrefix: streamPrefix} : {}),
         }));
+
         for (const ev of out.events ?? []) {
+
             const message = (ev.message ?? '').trimEnd();
+
             lines.push({
                 timestamp: new Date(ev.timestamp ?? Date.now()),
                 message,
                 stream: ev.logStreamName ?? '',
                 severity: classify(message),
             });
-        }
+
+}
         nextToken = out.nextToken;
-    } while (nextToken);
+
+} while (nextToken);
     return lines.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
 }
 
 export interface TailLastOptions {
@@ -125,6 +145,7 @@ export async function tailLastLines(
     n: number,
     opts: TailLastOptions = {},
 ): Promise<LogLine[]> {
+
     const maxLookback = opts.maxLookbackMs ?? 7 * 24 * 60 * 60_000;
     const now = Date.now();
     let end = now;
@@ -132,17 +153,21 @@ export async function tailLastLines(
     let collected: LogLine[] = [];
 
     while (end > now - maxLookback) {
+
         const start = Math.max(end - windowMs, now - maxLookback);
         const batch = await fetchWindow(region, logGroup, start, end, opts.streamPrefix);
+
         // Older window goes before what we already have (which is newer).
         collected = batch.concat(collected);
         if (collected.length >= n) break;
         if (start <= now - maxLookback) break;
         end = start;
         windowMs *= 4;
-    }
+
+}
 
     return collected.slice(-n);
+
 }
 
 export interface FollowOptions {
@@ -166,17 +191,20 @@ export interface FollowOptions {
  * Async generator that yields fresh log lines as they show up. The caller
  * is responsible for break/return; we honour `signal` between polls.
  */
-export async function * follow(
+export async function* follow(
     region: string,
     logGroup: string,
     opts: FollowOptions = {},
 ): AsyncGenerator<LogLine, void, void> {
+
     const interval = opts.intervalMs ?? 3_000;
     let cursor = opts.sinceMs ?? Date.now();
     const seen = new Set<string>();
 
     while (!opts.signal?.aborted) {
+
         try {
+
             const out = await logs(region).send(new FilterLogEventsCommand({
                 logGroupName: logGroup,
                 startTime: cursor,
@@ -185,11 +213,15 @@ export async function * follow(
             }));
 
             const fresh: LogLine[] = [];
+
             for (const ev of out.events ?? []) {
+
                 const key = ev.eventId ?? `${ev.timestamp}-${ev.message?.slice(0, 32) ?? ''}`;
+
                 if (seen.has(key)) continue;
                 seen.add(key);
                 const message = (ev.message ?? '').trimEnd();
+
                 fresh.push({
                     timestamp: new Date(ev.timestamp ?? Date.now()),
                     message,
@@ -197,23 +229,20 @@ export async function * follow(
                     severity: classify(message),
                 });
                 if (ev.timestamp && ev.timestamp >= cursor) {
+
                     cursor = ev.timestamp; // advance cursor past newest event
-                }
-            }
+
+}
+
+}
 
             // Trim the seen-set so it doesn't grow unbounded over hours of streaming.
-            if (seen.size > 5000) {
-                const drop = seen.size - 2500;
-                let i = 0;
-                for (const k of seen) {
-                    if (i++ >= drop) break;
-                    seen.delete(k);
-                }
-            }
+            trimSeenSet(seen);
 
             fresh.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
             for (const line of fresh) yield line;
-        } catch {
+
+} catch {
             // Swallow transient errors (throttling, expired creds mid-refresh).
             // Next iteration will retry; the AWS SDK has its own backoff.
         }
@@ -222,5 +251,25 @@ export async function * follow(
         opts.onPoll?.();
 
         await new Promise<void>((resolve) => setTimeout(resolve, interval));
-    }
+
+}
+
+}
+
+// Bound the dedupe set so a long-running stream doesn't leak memory. Once it
+// grows past 5k entries, drop the oldest ~half (Sets preserve insertion order).
+function trimSeenSet(seen: Set<string>): void {
+
+    if (seen.size <= 5000) return;
+
+    const drop = seen.size - 2500;
+    let i = 0;
+
+    for (const k of seen) {
+
+        if (i++ >= drop) break;
+        seen.delete(k);
+
+}
+
 }

@@ -15,7 +15,9 @@ interface Props {
 }
 
 export function HeaderBar({service, lastFetchedAt, error}: Props): React.ReactElement {
+
     if (!service) {
+
         return (
             <Box paddingX={1}>
                 <Pill kind="primary"> ecswatch </Pill>
@@ -23,9 +25,11 @@ export function HeaderBar({service, lastFetchedAt, error}: Props): React.ReactEl
                 <Muted>{error ? `error: ${error}` : 'loading…'}</Muted>
             </Box>
         );
-    }
+
+}
     const primary = primaryDeployment(service);
     const ageMs = lastFetchedAt ? Date.now() - lastFetchedAt.getTime() : 0;
+
     return (
         <Box paddingX={1} flexDirection="row" justifyContent="space-between">
             <Box>
@@ -51,13 +55,18 @@ export function HeaderBar({service, lastFetchedAt, error}: Props): React.ReactEl
             </Box>
         </Box>
     );
+
 }
 
 function rolloutKind(state: string): 'success' | 'rolling' | 'error' | 'warning' {
+
     switch (state) {
+
         case 'COMPLETED': return 'success';
         case 'IN_PROGRESS': return 'rolling';
         case 'FAILED': return 'error';
         default: return 'warning';
-    }
+
+}
+
 }

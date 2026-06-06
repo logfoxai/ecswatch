@@ -21,14 +21,14 @@ export const palette = {
     bgPanel: [24, 24, 37] as const,
 
     // Semantic
-    primary: [137, 180, 250] as const,   // soft blue
-    accent: [203, 166, 247] as const,    // lavender
-    success: [166, 227, 161] as const,   // mint green
-    warning: [250, 179, 135] as const,   // peach
-    error: [243, 139, 168] as const,     // rose
-    info: [148, 226, 213] as const,      // teal
-    pending: [249, 226, 175] as const,   // soft yellow
-    rolling: [137, 220, 235] as const,   // sky cyan
+    primary: [137, 180, 250] as const, // soft blue
+    accent: [203, 166, 247] as const, // lavender
+    success: [166, 227, 161] as const, // mint green
+    warning: [250, 179, 135] as const, // peach
+    error: [243, 139, 168] as const, // rose
+    info: [148, 226, 213] as const, // teal
+    pending: [249, 226, 175] as const, // soft yellow
+    rolling: [137, 220, 235] as const, // sky cyan
 
     badgeBg: [49, 50, 68] as const,
     border: [69, 71, 90] as const,
@@ -37,11 +37,15 @@ export const palette = {
 type RGB = readonly [number, number, number];
 
 function rgb(c: RGB): ChalkInstance {
+
     return chalk.rgb(c[0], c[1], c[2]);
+
 }
 
 function bgRgb(c: RGB): ChalkInstance {
+
     return chalk.bgRgb(c[0], c[1], c[2]);
+
 }
 
 export const c = {
@@ -69,9 +73,12 @@ export const bg = {
 
 /** Stylized status pill — `bg + bold + black text` reads well in CI logs. */
 export function pill(label: string, kind: 'success' | 'warning' | 'error' | 'info' | 'primary' | 'pending' | 'rolling' = 'info'): string {
+
     const pad = ` ${label} `;
     const black = chalk.rgb(15, 15, 25).bold;
+
     switch (kind) {
+
         case 'success': return bgRgb(palette.success)(black(pad));
         case 'warning': return bgRgb(palette.warning)(black(pad));
         case 'error': return bgRgb(palette.error)(black(pad));
@@ -80,35 +87,52 @@ export function pill(label: string, kind: 'success' | 'warning' | 'error' | 'inf
         case 'rolling': return bgRgb(palette.rolling)(black(pad));
         case 'info':
         default: return bgRgb(palette.info)(black(pad));
-    }
+
+}
+
 }
 
 /** Rolls a free-form ECS message into the right semantic color. */
 export function colorEventMessage(message: string): string {
+
     const lower = message.toLowerCase();
+
     if (lower.includes('failed') || lower.includes('unhealthy') || lower.includes('error')) {
+
         return c.error(message);
-    }
+
+}
     if (lower.includes('stopped') || lower.includes('draining') || lower.includes('deregistered')) {
+
         return c.warning(message);
-    }
+
+}
     if (lower.includes('has started') || lower.includes('registered') || lower.includes('reached a steady state')) {
+
         return c.success(message);
-    }
+
+}
     return c.info(message);
+
 }
 
 export function colorRolloutState(state: string): string {
+
     switch (state) {
+
         case 'COMPLETED': return pill('COMPLETED', 'success');
         case 'IN_PROGRESS': return pill('IN PROGRESS', 'rolling');
         case 'FAILED': return pill('FAILED', 'error');
         default: return pill(state || 'UNKNOWN', 'warning');
-    }
+
+}
+
 }
 
 export function colorTaskStatus(status: string): string {
+
     switch (status) {
+
         case 'RUNNING': return c.success(status);
         case 'PENDING':
         case 'PROVISIONING':
@@ -117,15 +141,21 @@ export function colorTaskStatus(status: string): string {
         case 'DEPROVISIONING':
         case 'DEACTIVATING': return c.warning(status);
         default: return c.muted(status);
-    }
+
+}
+
 }
 
 export function colorHealth(status: string | null | undefined): string {
+
     if (!status) return c.dim('—');
     switch (status) {
-        case 'HEALTHY': return c.success('●') + ' ' + c.success(status);
-        case 'UNHEALTHY': return c.error('●') + ' ' + c.error(status);
-        case 'UNKNOWN': return c.dim('●') + ' ' + c.dim(status);
+
+        case 'HEALTHY': return `${c.success('●')} ${c.success(status)}`;
+        case 'UNHEALTHY': return `${c.error('●')} ${c.error(status)}`;
+        case 'UNKNOWN': return `${c.dim('●')} ${c.dim(status)}`;
         default: return c.muted(status);
-    }
+
+}
+
 }

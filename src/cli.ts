@@ -42,6 +42,13 @@ interface GlobalOpts {
     refresh?: boolean;
 }
 
+interface WatchCmdOpts {
+    once?: boolean;
+    expectedTaskDef?: string;
+    forceCi?: boolean;
+    forceTui?: boolean;
+}
+
 /**
  * Build the run context, resolving the cluster if one wasn't given. Cluster
  * precedence: --cluster flag → ECS_CLUSTER_NAME env → auto-discovery (cached).
@@ -49,36 +56,50 @@ interface GlobalOpts {
  * see which account/cluster they're actually pointed at.
  */
 async function resolveContext(service: string, opts: GlobalOpts): Promise<CliContext> {
+
     const region = opts.region ?? DEFAULT_REGION;
     const containerName = opts.container ?? process.env.CONTAINER_NAME ?? 'app';
     const logGroup = opts.logGroup ?? process.env.ECSWATCH_LOG_GROUP ?? null;
 
     const explicitCluster = opts.cluster ?? process.env.ECS_CLUSTER_NAME;
+
     if (explicitCluster) {
+
         return {service, region, cluster: explicitCluster, containerName, logGroup};
-    }
+
+}
 
     const res = await resolveCluster(region, service, {refresh: opts.refresh});
     const how = res.source === 'cache' ? 'cached' : `scanned ${res.clustersScanned} clusters`;
+
     process.stderr.write(
-        c.dim(`account ${res.accountId} · ${region} · cluster ${res.cluster} (${how})`) + '\n',
+        `${c.dim(`account ${res.accountId} · ${region} · cluster ${res.cluster} (${how})`)}\n`,
     );
     return {service, region, cluster: res.cluster, containerName, logGroup};
+
 }
 
 /** Resolve the context or print the error + set a failing exit code. */
 async function contextOrExit(service: string, opts: GlobalOpts): Promise<CliContext | null> {
+
     try {
+
         return await resolveContext(service, opts);
-    } catch (err) {
+
+} catch (err) {
+
         console.error(c.error(err instanceof Error ? err.message : String(err)));
         process.exitCode = 1;
         return null;
-    }
+
+}
+
 }
 
 async function main(): Promise<void> {
+
     const program = new Command();
+
     program
         .name('ecswatch')
         .description('ECS deploy watcher + TUI. Streams plain output in CI (CI/GITHUB_ACTIONS set, or non-TTY); fully interactive TUI otherwise.')
@@ -96,20 +117,30 @@ async function main(): Promise<void> {
         .option('--expected-task-def <arn>', 'fail if PRIMARY ends on a different task definition')
         .option('--force-ci', 'force CI streaming output even on a TTY')
         .option('--force-tui', 'force the TUI even when CI=true or stdout is not a TTY')
-        .action(async (service: string, cmdOpts: {once?: boolean; expectedTaskDef?: string; forceCi?: boolean; forceTui?: boolean}) => {
+        .action(async (service: string, cmdOpts: WatchCmdOpts) => {
+
             const ctx = await contextOrExit(service, program.opts<GlobalOpts>());
+
             if (!ctx) return;
             if (cmdOpts.once) {
+
                 process.exitCode = await runCi(ctx, {once: true});
                 return;
-            }
+
+}
             const mode = cmdOpts.forceTui ? 'tui' : cmdOpts.forceCi ? 'ci' : 'auto';
+
             if (shouldUseTui(mode)) {
+
                 process.exitCode = await runTui(ctx);
-            } else {
+
+} else {
+
                 process.exitCode = await runCi(ctx, {once: false, expectedTaskDefinitionArn: cmdOpts.expectedTaskDef});
-            }
-        });
+
+}
+
+});
 
     program
         .command('inspect <service>')
@@ -117,42 +148,56 @@ async function main(): Promise<void> {
         .option('--logs <n>', 'tail N recent log lines from CloudWatch', (v) => parseInt(v, 10), 0)
         .option('--no-llm', 'skip LLM analysis; use heuristic root-cause only')
         .action(async (service: string, cmdOpts: {logs: number; llm: boolean}) => {
+
             const ctx = await contextOrExit(service, program.opts<GlobalOpts>());
+
             if (!ctx) return;
             process.exitCode = await runSnapshot(ctx, {logLines: cmdOpts.logs, noLlm: !cmdOpts.llm});
-        });
+
+});
 
     program
         .command('ci <service>')
         .description('force CI streaming mode (same as watch --force-ci)')
         .option('--expected-task-def <arn>', 'fail if PRIMARY ends on a different task definition')
         .action(async (service: string, cmdOpts: {expectedTaskDef?: string}) => {
+
             const ctx = await contextOrExit(service, program.opts<GlobalOpts>());
+
             if (!ctx) return;
             process.exitCode = await runCi(ctx, {once: false, expectedTaskDefinitionArn: cmdOpts.expectedTaskDef});
-        });
+
+});
 
     program
         .command('tui <service>')
         .description('force interactive TUI (overrides CI auto-detection)')
         .action(async (service: string) => {
+
             const ctx = await contextOrExit(service, program.opts<GlobalOpts>());
+
             if (!ctx) return;
             process.exitCode = await runTui(ctx);
-        });
+
+});
 
     await program.parseAsync(process.argv);
+
 }
 
 function shouldUseTui(force: 'tui' | 'ci' | 'auto'): boolean {
+
     if (force === 'tui') return true;
     if (force === 'ci') return false;
     if (process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true') return false;
     if (!process.stdout.isTTY) return false;
     return true;
+
 }
 
 main().catch((err) => {
+
     console.error(c.error(err instanceof Error ? err.stack ?? err.message : String(err)));
     process.exit(1);
+
 });

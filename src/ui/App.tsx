@@ -47,6 +47,7 @@ interface AppProps {
 }
 
 export function App({ctx}: AppProps): React.ReactElement {
+
     const {exit} = useApp();
     const {stdout} = useStdout();
     const [focus, setFocus] = useState<Focus>('deployments');
@@ -79,61 +80,152 @@ export function App({ctx}: AppProps): React.ReactElement {
     // new lines arrived so the content under their eyes doesn't jump. At offset
     // 0 we stay live and let the tail advance.
     const prevLogLen = useRef(logs.lines.length);
+
     useEffect(() => {
+
         const delta = logs.lines.length - prevLogLen.current;
+
         prevLogLen.current = logs.lines.length;
         if (delta > 0 && logScroll > 0) {
+
             setLogScroll((s) => clampScroll(s + delta, logs.lines.length, bottomRows));
-        }
-    }, [logs.lines.length, logScroll, bottomRows]);
+
+}
+
+}, [logs.lines.length, logScroll, bottomRows]);
 
     useInput((input, key) => {
-        if (key.ctrl && input === 'c') { exit(); return; }
-        if (input === 'q') { exit(); return; }
+
+        if (key.ctrl && input === 'c') {
+
+ exit(); return;
+
+}
+        if (input === 'q') {
+
+ exit(); return;
+
+}
 
         // Log scrolling — only when the logs panel is focused, so the arrow keys
         // are free for other uses elsewhere later.
         if (focus === 'logs') {
-            const max = maxScroll(logs.lines.length, bottomRows);
-            if (key.upArrow) { setLogScroll((s) => clampScroll(s + 1, logs.lines.length, bottomRows)); return; }
-            if (key.downArrow) { setLogScroll((s) => Math.max(0, s - 1)); return; }
-            if (key.pageUp) { setLogScroll((s) => clampScroll(s + bottomRows, logs.lines.length, bottomRows)); return; }
-            if (key.pageDown) { setLogScroll((s) => Math.max(0, s - bottomRows)); return; }
-            if (key.escape) { setLogScroll(0); return; } // jump back to live tail
-            if (input === 'g') { setLogScroll(max); return; } // oldest buffered
-            if (input === 'G') { setLogScroll(0); return; } // newest / live
-        }
 
-        if (input === 'r') { void state.refresh(); return; }
-        if (input === '?') { setShowHelp((v) => !v); return; }
-        if (input === 'm') { setShowMenu((v) => !v); return; }
-        if (input === 'p') { setLogsPaused((v) => !v); return; }
+            const max = maxScroll(logs.lines.length, bottomRows);
+
+            if (key.upArrow) {
+
+ setLogScroll((s) => clampScroll(s + 1, logs.lines.length, bottomRows)); return;
+
+}
+            if (key.downArrow) {
+
+ setLogScroll((s) => Math.max(0, s - 1)); return;
+
+}
+            if (key.pageUp) {
+
+ setLogScroll((s) => clampScroll(s + bottomRows, logs.lines.length, bottomRows)); return;
+
+}
+            if (key.pageDown) {
+
+ setLogScroll((s) => Math.max(0, s - bottomRows)); return;
+
+}
+            if (key.escape) {
+
+ setLogScroll(0); return;
+
+} // jump back to live tail
+            if (input === 'g') {
+
+ setLogScroll(max); return;
+
+} // oldest buffered
+            if (input === 'G') {
+
+ setLogScroll(0); return;
+
+} // newest / live
+
+}
+
+        if (input === 'r') {
+
+ void state.refresh(); return;
+
+}
+        if (input === '?') {
+
+ setShowHelp((v) => !v); return;
+
+}
+        if (input === 'm') {
+
+ setShowMenu((v) => !v); return;
+
+}
+        if (input === 'p') {
+
+ setLogsPaused((v) => !v); return;
+
+}
         if (input === 'a') {
+
             // Manually trigger an analysis with the current log buffer.
             void state.refreshRootCause(logs.lines);
             return;
-        }
+
+}
         // Focus keys, numbered left→right, top→bottom across the layout.
-        if (input === '1') { setFocus('diagnostics'); return; }
-        if (input === '2') { setFocus('health'); return; }
-        if (input === '3') { setFocus('tasks'); return; }
-        if (input === '4') { setFocus('deployments'); return; }
-        if (input === '5') { setFocus('events'); return; }
-        if (input === '6') { setFocus('logs'); return; }
-    });
+        if (input === '1') {
+
+ setFocus('diagnostics'); return;
+
+}
+        if (input === '2') {
+
+ setFocus('health'); return;
+
+}
+        if (input === '3') {
+
+ setFocus('tasks'); return;
+
+}
+        if (input === '4') {
+
+ setFocus('deployments'); return;
+
+}
+        if (input === '5') {
+
+ setFocus('events'); return;
+
+}
+        if (input === '6') {
+
+ setFocus('logs'); return;
+
+}
+
+});
 
     // Auto-run analysis once on the first FAILED rollout we see. We do this
     // without prompting because the operator is almost certainly here for
     // exactly this reason and waiting for them to press `a` is silly.
     const failedRolloutId = state.service?.deployments.find((d) => d.status === 'PRIMARY' && d.rolloutState === 'FAILED')?.id;
+
     useEffect(() => {
+
         if (!failedRolloutId) return;
         if (state.rootCauseAnalysis) return;
         if (state.rootCauseLoading) return;
         void state.refreshRootCause(logs.lines);
         // We intentionally depend only on failedRolloutId so it triggers once.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [failedRolloutId]);
+
+}, [failedRolloutId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const llmReady = useMemo(() => llmConfigured(), []);
 
@@ -214,24 +306,31 @@ export function App({ctx}: AppProps): React.ReactElement {
             <Footer showMenu={showMenu} />
         </Box>
     );
+
 }
 
 /** Equal-width grid column wrapper. flexBasis:0 + flexGrow:1 makes the two
  *  columns split the row evenly; overflow hidden guards against any stray
  *  content from widening a cell past its half. */
 function GridCell({children}: {children: React.ReactNode}): React.ReactElement {
+
     return (
         <Box flexBasis={0} flexGrow={1} flexDirection="column" overflow="hidden">
             {children}
         </Box>
     );
+
 }
 
 /** Largest meaningful scroll offset: enough to reveal the oldest buffered line. */
 function maxScroll(total: number, viewport: number): number {
+
     return Math.max(0, total - viewport);
+
 }
 
 function clampScroll(value: number, total: number, viewport: number): number {
+
     return Math.min(Math.max(0, value), maxScroll(total, viewport));
+
 }

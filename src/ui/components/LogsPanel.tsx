@@ -24,7 +24,10 @@ interface Props {
     flexGrow?: number;
 }
 
-export function LogsPanel({lines, focused, maxRows, scroll, started, error, logGroup, flexGrow}: Props): React.ReactElement {
+export function LogsPanel({
+    lines, focused, maxRows, scroll, started, error, logGroup, flexGrow,
+}: Props): React.ReactElement {
+
     // viewport bottom is `scroll` lines up from the end; window is maxRows tall.
     const end = Math.max(0, lines.length - scroll);
     const start = Math.max(0, end - maxRows);
@@ -34,7 +37,7 @@ export function LogsPanel({lines, focused, maxRows, scroll, started, error, logG
 
     return (
         <Panel
-            title={`6 · Logs${logGroup ? '  ' + dim(logGroup) : ''}`}
+            title={`6 · Logs${logGroup ? `  ${dim(logGroup)}` : ''}`}
             focused={focused}
             accentKind="accent"
             flexGrow={flexGrow}
@@ -64,21 +67,30 @@ export function LogsPanel({lines, focused, maxRows, scroll, started, error, logG
             ))}
         </Panel>
     );
+
 }
 
 function severityColor(s: LogLine['severity']): string {
+
     switch (s) {
+
         case 'error': return colors.error;
         case 'warn': return colors.warning;
         case 'debug': return colors.dim;
         default: return colors.fg;
-    }
+
+}
+
 }
 
 function dim(s: string): string {
+
     return `· ${s}`;
+
 }
 
 function truncate(s: string, n: number): string {
-    return s.length <= n ? s : s.slice(0, n - 1) + '…';
+
+    return s.length <= n ? s : `${s.slice(0, n - 1)}…`;
+
 }

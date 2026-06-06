@@ -12,7 +12,9 @@ import React from 'react';
 import {palette} from '../theme.js';
 
 function hex(rgb: readonly [number, number, number]): string {
+
     return `#${rgb.map((n) => n.toString(16).padStart(2, '0')).join('')}`;
+
 }
 
 export const colors = {
@@ -38,8 +40,11 @@ interface PillProps {
 }
 
 export function Pill({children, kind = 'info'}: PillProps): React.ReactElement {
+
     const bg = (() => {
+
         switch (kind) {
+
             case 'success': return colors.success;
             case 'warning': return colors.warning;
             case 'error': return colors.error;
@@ -49,13 +54,17 @@ export function Pill({children, kind = 'info'}: PillProps): React.ReactElement {
             case 'muted': return colors.badgeBg;
             case 'info':
             default: return colors.info;
-        }
-    })();
+
+}
+
+})();
+
     return (
         <Text backgroundColor={bg} color="#0f0f19" bold>
             {' '}{children}{' '}
         </Text>
     );
+
 }
 
 interface PanelProps {
@@ -69,17 +78,23 @@ interface PanelProps {
 
 /** Standard panel chrome: bordered Box with a colored title pill. */
 export function Panel(props: PanelProps): React.ReactElement {
+
     const borderColor = props.focused ? colors.primary : colors.border;
     const accent = (() => {
+
         switch (props.accentKind) {
+
             case 'success': return colors.success;
             case 'warning': return colors.warning;
             case 'error': return colors.error;
             case 'primary': return colors.primary;
             case 'accent':
             default: return colors.accent;
-        }
-    })();
+
+}
+
+})();
+
     return (
         <Box
             flexDirection="column"
@@ -98,14 +113,19 @@ export function Panel(props: PanelProps): React.ReactElement {
             {props.children}
         </Box>
     );
+
 }
 
 export function Dim({children, ...rest}: TextProps & {children: React.ReactNode}): React.ReactElement {
+
     return <Text color={colors.dim} {...rest}>{children}</Text>;
+
 }
 
 export function Muted({children, ...rest}: TextProps & {children: React.ReactNode}): React.ReactElement {
+
     return <Text color={colors.muted} {...rest}>{children}</Text>;
+
 }
 
 interface ProgressProps {
@@ -115,6 +135,7 @@ interface ProgressProps {
 }
 
 export function Progress({value, max, width = 24}: ProgressProps): React.ReactElement {
+
     // We use ▰/▱ (filled/outline pill glyphs) and a `primary` blue rather than
     // `success` green so the bar can never be mistaken for a green status pill
     // sitting directly above or below it (e.g. COMPLETED). U+2588 FULL BLOCK +
@@ -123,10 +144,12 @@ export function Progress({value, max, width = 24}: ProgressProps): React.ReactEl
     if (max <= 0) return <Text color={colors.dim}>{'▱'.repeat(width)}</Text>;
     const filled = Math.min(width, Math.round((value / max) * width));
     const empty = width - filled;
+
     return (
         <Text>
             <Text color={colors.primary}>{'▰'.repeat(filled)}</Text>
             <Text color={colors.dim}>{'▱'.repeat(empty)}</Text>
         </Text>
     );
+
 }

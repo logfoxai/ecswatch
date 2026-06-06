@@ -48,70 +48,104 @@ export interface ResolveResult {
 }
 
 export class ClusterResolutionError extends Error {
+
     constructor(message: string) {
+
         super(message);
         this.name = 'ClusterResolutionError';
-    }
+
+}
+
 }
 
 function cacheDir(): string {
+
     const base = process.env.XDG_CACHE_HOME?.trim() || path.join(homedir(), '.cache');
+
     return path.join(base, 'ecswatch');
+
 }
 
 function cachePath(): string {
+
     return path.join(cacheDir(), 'clusters.json');
+
 }
 
 async function loadCache(): Promise<CacheFile> {
+
     try {
+
         const raw = await readFile(cachePath(), 'utf8');
         const parsed = JSON.parse(raw) as unknown;
+
         return (parsed && typeof parsed === 'object') ? (parsed as CacheFile) : {};
-    } catch {
+
+} catch {
+
         // Missing / unreadable / corrupt cache is non-fatal — we just rescan.
         return {};
-    }
+
+}
+
 }
 
 async function saveCache(cache: CacheFile): Promise<void> {
+
     try {
+
         await mkdir(cacheDir(), {recursive: true});
-        await writeFile(cachePath(), JSON.stringify(cache, null, 2) + '\n', 'utf8');
-    } catch {
+        await writeFile(cachePath(), `${JSON.stringify(cache, null, 2)}\n`, 'utf8');
+
+} catch {
         // A failed cache write should never break the command — worst case we
         // rescan next time.
     }
+
 }
 
 /** Scan every cluster, building the service->clusters map. */
 async function scan(region: string): Promise<CacheEntry> {
+
     const clusters = await listAllClusters(region);
     const services: Record<string, string[]> = {};
 
     for (let i = 0; i < clusters.length; i += SCAN_CONCURRENCY) {
+
         const batch = clusters.slice(i, i + SCAN_CONCURRENCY);
         const results = await Promise.all(batch.map(async (cluster) => ({
             cluster,
             services: await listAllServices(region, cluster).catch(() => [] as string[]),
         })));
+
         for (const {cluster, services: svcNames} of results) {
+
             for (const name of svcNames) {
+
                 (services[name] ??= []).push(cluster);
-            }
-        }
-    }
+
+}
+
+}
+
+}
 
     return {scannedAt: Date.now(), clusters, services};
+
 }
 
 function isFresh(entry: CacheEntry | undefined): entry is CacheEntry {
+
     return Boolean(entry) && Date.now() - (entry as CacheEntry).scannedAt < TTL_MS;
+
 }
 
 function pick(entry: CacheEntry, service: string): {hit: boolean; clusters: string[]} {
+
     const clusters = entry.services[service] ?? [];
+
     return {hit: clusters.length > 0, clusters};
+
 }
 
 export interface ResolveOptions {
@@ -129,33 +163,44 @@ export async function resolveCluster(
     service: string,
     opts: ResolveOptions = {},
 ): Promise<ResolveResult> {
+
     const accountId = await getAccountId(region);
     const key = `${accountId}:${region}`;
     const cache = await loadCache();
 
     // 1. Try the cache unless --refresh.
     if (!opts.refresh && isFresh(cache[key])) {
+
         const {hit, clusters} = pick(cache[key]!, service);
+
         if (hit) {
+
             return finalize(service, clusters, accountId, 'cache', 0);
-        }
+
+}
         // Fresh cache but service absent → it may be newly created. Fall through
         // to a rescan rather than erroring on stale data.
-    }
+
+}
 
     // 2. Scan, cache, and resolve.
     const entry = await scan(region);
+
     cache[key] = entry;
     await saveCache(cache);
 
     const {hit, clusters} = pick(entry, service);
+
     if (!hit) {
+
         throw new ClusterResolutionError(
             `Service "${service}" was not found in any of the ${entry.clusters.length} cluster(s) `
             + `in account ${accountId} (${region}). Check the name, your AWS profile/region, or pass --cluster.`,
         );
-    }
+
+}
     return finalize(service, clusters, accountId, 'scan', entry.clusters.length);
+
 }
 
 function finalize(
@@ -165,11 +210,15 @@ function finalize(
     source: 'cache' | 'scan',
     clustersScanned: number,
 ): ResolveResult {
+
     if (clusters.length > 1) {
+
         throw new ClusterResolutionError(
             `Service "${service}" exists in multiple clusters: ${clusters.join(', ')}. `
             + 'Disambiguate with --cluster <name>.',
         );
-    }
+
+}
     return {cluster: clusters[0]!, accountId, source, clustersScanned};
+
 }

@@ -17,11 +17,16 @@ import {sts} from './clients.js';
 let cachedAccountId: string | null = null;
 
 export async function getAccountId(region: string): Promise<string> {
+
     if (cachedAccountId) return cachedAccountId;
     const out = await sts(region).send(new GetCallerIdentityCommand({}));
+
     if (!out.Account) {
+
         throw new Error('Could not resolve AWS account id from STS GetCallerIdentity.');
-    }
+
+}
     cachedAccountId = out.Account;
     return cachedAccountId;
+
 }

@@ -14,6 +14,7 @@ import {analyze} from '../../analyze/diagnostics.js';
 import {rootCause} from '../../analyze/rootCause.js';
 import type {
     CliContext,
+    DeploymentSnapshot,
     Diagnostic,
     LogLine,
     RootCauseAnalysis,
@@ -47,6 +48,7 @@ interface Options {
 }
 
 export function useServiceState(ctx: CliContext, opts: Options = {}): ServiceState {
+
     const intervalMs = opts.pollIntervalMs ?? 5_000;
 
     const [loading, setLoading] = useState(true);
@@ -66,10 +68,13 @@ export function useServiceState(ctx: CliContext, opts: Options = {}): ServiceSta
     const inFlight = useRef(false);
 
     const refresh = useCallback(async () => {
+
         if (inFlight.current) return;
         inFlight.current = true;
         try {
+
             const svc = await describeService(ctx.region, ctx.cluster, ctx.service);
+
             if (!mounted.current) return;
             setService(svc);
             setError(null);
@@ -80,10 +85,16 @@ export function useServiceState(ctx: CliContext, opts: Options = {}): ServiceSta
             // an error banner — they degrade gracefully (empty arrays).
             const [running, stopped, tgHealth, td] = await Promise.all([
                 safe(() => listTasksDetailed(ctx.region, ctx.cluster, ctx.service, {desiredStatus: 'RUNNING'}, svc.primaryTaskDefinitionArn), []),
-                safe(() => getRecentStoppedTasks(ctx.region, ctx.cluster, ctx.service, svc.primaryTaskDefinitionArn), []),
+                safe(
+                    () => getRecentStoppedTasks(ctx.region, ctx.cluster, ctx.service, svc.primaryTaskDefinitionArn),
+                    [],
+                ),
                 safe(() => describeTargetHealth(ctx.region, svc.targetGroupArns), []),
-                logGroup ? Promise.resolve(null) : safe(() => describeTaskDef(ctx.region, svc.primaryTaskDefinitionArn), null),
+                logGroup
+                    ? Promise.resolve(null)
+                    : safe(() => describeTaskDef(ctx.region, svc.primaryTaskDefinitionArn), null),
             ]);
+
             if (!mounted.current) return;
             setRunningTasks(running);
             setStoppedTasks(stopped);
@@ -91,20 +102,29 @@ export function useServiceState(ctx: CliContext, opts: Options = {}): ServiceSta
             if (td?.logGroup && !logGroup) setLogGroup(td.logGroup);
 
             const diag = analyze({service: svc, runningTasks: running, stoppedTasks: stopped, targetHealth: tgHealth});
+
             setDiagnostics(diag);
-        } catch (err) {
+
+} catch (err) {
+
             if (!mounted.current) return;
             setError(err instanceof Error ? err.message : String(err));
-        } finally {
+
+} finally {
+
             inFlight.current = false;
             if (mounted.current) setLoading(false);
-        }
-    }, [ctx.region, ctx.cluster, ctx.service, logGroup]);
+
+}
+
+}, [ctx.region, ctx.cluster, ctx.service, logGroup]);
 
     const refreshRootCause = useCallback(async (recentLogs: LogLine[]) => {
+
         if (!service) return;
         setRootCauseLoading(true);
         try {
+
             const analysis = await rootCause({
                 service,
                 diagnostics,
@@ -112,21 +132,35 @@ export function useServiceState(ctx: CliContext, opts: Options = {}): ServiceSta
                 targetHealth,
                 recentLogs,
             });
+
             if (mounted.current) setRootCauseAnalysis(analysis);
-        } finally {
+
+} finally {
+
             if (mounted.current) setRootCauseLoading(false);
-        }
-    }, [service, diagnostics, stoppedTasks, targetHealth]);
+
+}
+
+}, [service, diagnostics, stoppedTasks, targetHealth]);
 
     useEffect(() => {
+
         mounted.current = true;
         void refresh();
-        const id = setInterval(() => { void refresh(); }, intervalMs);
+        const id = setInterval(() => {
+
+ void refresh();
+
+}, intervalMs);
+
         return () => {
+
             mounted.current = false;
             clearInterval(id);
-        };
-    }, [refresh, intervalMs]);
+
+};
+
+}, [refresh, intervalMs]);
 
     return useMemo<ServiceState>(() => ({
         loading,
@@ -143,19 +177,31 @@ export function useServiceState(ctx: CliContext, opts: Options = {}): ServiceSta
         logGroup,
         refresh,
         refreshRootCause,
-    }), [loading, error, hasInitialData, service, runningTasks, stoppedTasks, targetHealth, diagnostics, rootCauseAnalysis, rootCauseLoading, lastFetchedAt, logGroup, refresh, refreshRootCause]);
+    }), [
+        loading, error, hasInitialData, service, runningTasks, stoppedTasks, targetHealth, diagnostics,
+        rootCauseAnalysis, rootCauseLoading, lastFetchedAt, logGroup, refresh, refreshRootCause,
+    ]);
+
 }
 
-function primary(svc: ServiceSnapshot | null) {
+function primary(svc: ServiceSnapshot | null): DeploymentSnapshot | null | undefined {
+
     return svc ? primaryDeployment(svc) : null;
+
 }
 
 export {primary as primaryFromSnapshot};
 
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
+
     try {
+
         return await fn();
-    } catch {
+
+} catch {
+
         return fallback;
-    }
+
+}
+
 }

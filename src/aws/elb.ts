@@ -16,6 +16,7 @@ export async function describeTargetHealth(
     region: string,
     targetGroupArns: string[],
 ): Promise<TargetHealthSnapshot[]> {
+
     if (targetGroupArns.length === 0) return [];
 
     // Look up names in one shot; we want them for display.
@@ -23,17 +24,25 @@ export async function describeTargetHealth(
         TargetGroupArns: targetGroupArns,
     }));
     const arnToName = new Map<string, string>();
+
     for (const tg of groups.TargetGroups ?? []) {
+
         if (tg.TargetGroupArn && tg.TargetGroupName) {
+
             arnToName.set(tg.TargetGroupArn, tg.TargetGroupName);
-        }
-    }
+
+}
+
+}
 
     const snapshots: TargetHealthSnapshot[] = [];
+
     for (const arn of targetGroupArns) {
+
         const out = await elb(region).send(new DescribeTargetHealthCommand({
             TargetGroupArn: arn,
         }));
+
         snapshots.push({
             targetGroupArn: arn,
             targetGroupName: arnToName.get(arn) ?? arn.split('/').slice(-2, -1)[0] ?? arn,
@@ -45,6 +54,8 @@ export async function describeTargetHealth(
                 description: t.TargetHealth?.Description ?? null,
             })),
         });
-    }
+
+}
     return snapshots;
+
 }

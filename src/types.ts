@@ -95,13 +95,13 @@ export interface ContainerSnapshot {
 export interface TargetHealthSnapshot {
     targetGroupArn: string;
     targetGroupName: string;
-    targets: Array<{
+    targets: {
         id: string;
         port: number | null;
         state: string;
         reason: string | null;
         description: string | null;
-    }>;
+    }[];
 }
 
 export interface LogLine {

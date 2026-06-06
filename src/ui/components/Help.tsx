@@ -24,6 +24,7 @@ const ROWS: Row[] = [
 ];
 
 export function Help(): React.ReactElement {
+
     return (
         <Box flexDirection="column" borderStyle="double" borderColor={colors.primary} paddingX={2} paddingY={1}>
             <Box>
@@ -41,9 +42,17 @@ export function Help(): React.ReactElement {
                 ))}
             </Box>
             <Box marginTop={1} flexDirection="column">
-                <Text color={colors.muted}>Tip: set <Text color={colors.primary}>ANTHROPIC_API_KEY</Text> or <Text color={colors.primary}>OPENAI_API_KEY</Text> to enable LLM root-cause.</Text>
-                <Text color={colors.muted}>Tip: override the chain with <Text color={colors.primary}>ECSWATCH_LLM_MODELS=anthropic:claude-sonnet-4-6,openai:gpt-5</Text>.</Text>
+                <Text color={colors.muted}>
+                    Tip: set{' '}
+                    <Text color={colors.primary}>ANTHROPIC_API_KEY</Text> or{' '}
+                    <Text color={colors.primary}>OPENAI_API_KEY</Text> to enable LLM root-cause.
+                </Text>
+                <Text color={colors.muted}>
+                    Tip: override the chain with{' '}
+                    <Text color={colors.primary}>ECSWATCH_LLM_MODELS=anthropic:claude-sonnet-4-6,openai:gpt-5</Text>.
+                </Text>
             </Box>
         </Box>
     );
+
 }

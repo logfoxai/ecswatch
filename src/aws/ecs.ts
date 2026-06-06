@@ -31,33 +31,48 @@ import type {
 const KNOWN_ROLLOUT_STATES = new Set<RolloutState>(['IN_PROGRESS', 'COMPLETED', 'FAILED', 'UNKNOWN']);
 
 function asRolloutState(raw: string | undefined): RolloutState {
+
     if (!raw) return 'UNKNOWN';
     return KNOWN_ROLLOUT_STATES.has(raw as RolloutState) ? (raw as RolloutState) : 'UNKNOWN';
+
 }
 
 function truncTd(arn: string | undefined): {family: string; full: string} {
+
     if (!arn) return {family: '?', full: ''};
     const tail = arn.split('/').pop() ?? arn;
+
     return {family: tail, full: arn};
+
 }
 
 function classifyEvent(message: string): ServiceEventSnapshot['severity'] {
+
     const m = message.toLowerCase();
+
     if (m.includes('failed') || m.includes('unhealthy') || m.includes('error')
         || m.includes('unable to') || m.includes('cannotpull') || m.includes('out of memory')) {
+
         return 'error';
-    }
+
+}
     if (m.includes('stopped') || m.includes('draining') || m.includes('deregistered')) {
+
         return 'warn';
-    }
+
+}
     if (m.includes('has started') || m.includes('registered')
         || m.includes('reached a steady state') || m.includes('has completed')) {
+
         return 'success';
-    }
+
+}
     return 'info';
+
 }
 
 function normalizeService(svc: Service, region: string): ServiceSnapshot {
+
     const primary = (svc.deployments ?? []).find((d) => d.status === 'PRIMARY');
     const td = truncTd(primary?.taskDefinition ?? svc.taskDefinition);
     const events: ServiceEventSnapshot[] = (svc.events ?? []).map((e) => ({
@@ -67,7 +82,9 @@ function normalizeService(svc: Service, region: string): ServiceSnapshot {
         severity: classifyEvent(e.message ?? ''),
     }));
     const deployments: DeploymentSnapshot[] = (svc.deployments ?? []).map((d) => {
+
         const dtd = truncTd(d.taskDefinition);
+
         return {
             id: d.id ?? '',
             status: (d.status ?? 'INACTIVE') as DeploymentStatus,
@@ -82,7 +99,8 @@ function normalizeService(svc: Service, region: string): ServiceSnapshot {
             createdAt: d.createdAt ?? null,
             updatedAt: d.updatedAt ?? null,
         };
-    });
+
+});
 
     return {
         serviceName: svc.serviceName ?? '?',
@@ -109,6 +127,7 @@ function normalizeService(svc: Service, region: string): ServiceSnapshot {
             .filter((n): n is string => Boolean(n)),
         fetchedAt: new Date(),
     };
+
 }
 
 export async function describeService(
@@ -116,17 +135,22 @@ export async function describeService(
     cluster: string,
     service: string,
 ): Promise<ServiceSnapshot> {
+
     const out: DescribeServicesCommandOutput = await ecs(region).send(
         new DescribeServicesCommand({cluster, services: [service]}),
     );
     const svc = out.services?.[0];
+
     if (!svc || svc.status === 'MISSING') {
+
         throw new Error(
             `ECS service "${service}" not found on cluster "${cluster}" (${region}). `
             + 'Check the service name, --cluster, your region, and AWS credentials.',
         );
-    }
+
+}
     return normalizeService(svc, region);
+
 }
 
 export interface TaskListOptions {
@@ -143,6 +167,7 @@ export async function listTasksDetailed(
     opts: TaskListOptions = {},
     primaryTaskDefArn?: string,
 ): Promise<TaskSnapshot[]> {
+
     const list = await ecs(region).send(new ListTasksCommand({
         cluster,
         serviceName: service,
@@ -150,19 +175,24 @@ export async function listTasksDetailed(
         desiredStatus: opts.desiredStatus,
     }));
     const arns = list.taskArns ?? [];
+
     if (arns.length === 0) return [];
     const detail = await ecs(region).send(new DescribeTasksCommand({
         cluster,
         tasks: arns,
     }));
+
     return (detail.tasks ?? []).map((t) => normalizeTask(t, primaryTaskDefArn));
+
 }
 
 function normalizeTask(t: Task, primaryTdArn?: string): TaskSnapshot {
+
     const arn = t.taskArn ?? '';
     const shortId = arn.split('/').pop()?.slice(-12) ?? '';
     const tdArn = t.taskDefinitionArn ?? '';
     const td = truncTd(tdArn);
+
     return {
         arn,
         shortId,
@@ -191,6 +221,7 @@ function normalizeTask(t: Task, primaryTdArn?: string): TaskSnapshot {
         })),
         onPrimaryDeployment: primaryTdArn !== undefined && tdArn === primaryTdArn,
     };
+
 }
 
 export async function getRecentStoppedTasks(
@@ -199,7 +230,9 @@ export async function getRecentStoppedTasks(
     service: string,
     primaryTdArn?: string,
 ): Promise<TaskSnapshot[]> {
+
     return listTasksDetailed(region, cluster, service, {desiredStatus: 'STOPPED'}, primaryTdArn);
+
 }
 
 export async function describeTaskDef(region: string, arn: string): Promise<{
@@ -208,11 +241,13 @@ export async function describeTaskDef(region: string, arn: string): Promise<{
     cpu: string;
     memory: string;
     runtimePlatform: string;
-    containers: Array<{name: string; image: string; environment: Array<{name: string; value: string}>}>;
+    containers: {name: string; image: string; environment: {name: string; value: string}[]}[];
     logGroup: string | null;
 }> {
+
     const out = await ecs(region).send(new DescribeTaskDefinitionCommand({taskDefinition: arn}));
     const td = out.taskDefinition;
+
     if (!td) throw new Error(`Task definition not found: ${arn}`);
     const containers = (td.containerDefinitions ?? []).map((c) => ({
         name: c.name ?? '',
@@ -223,6 +258,7 @@ export async function describeTaskDef(region: string, arn: string): Promise<{
     }));
     const firstWithLogs = (td.containerDefinitions ?? []).find((c) => c.logConfiguration?.options?.['awslogs-group']);
     const logGroup = firstWithLogs?.logConfiguration?.options?.['awslogs-group'] ?? null;
+
     return {
         family: td.family ?? '?',
         revision: td.revision ?? 0,
@@ -232,11 +268,14 @@ export async function describeTaskDef(region: string, arn: string): Promise<{
         containers,
         logGroup,
     };
+
 }
 
 /** Convenience: fetch the PRIMARY deployment from a service snapshot. */
 export function primaryDeployment(svc: ServiceSnapshot): DeploymentSnapshot | undefined {
+
     return svc.deployments.find((d) => d.status === 'PRIMARY');
+
 }
 
 // ---------------------------------------------------------------------------
@@ -245,17 +284,26 @@ export function primaryDeployment(svc: ServiceSnapshot): DeploymentSnapshot | un
 
 /** All cluster *names* in the account/region (paginated). */
 export async function listAllClusters(region: string): Promise<string[]> {
+
     const names: string[] = [];
     let nextToken: string | undefined;
+
     do {
+
         const out = await ecs(region).send(new ListClustersCommand({nextToken}));
+
         for (const arn of out.clusterArns ?? []) {
+
             const name = arn.split('/').pop();
+
             if (name) names.push(name);
-        }
+
+}
         nextToken = out.nextToken;
-    } while (nextToken);
+
+} while (nextToken);
     return names;
+
 }
 
 /**
@@ -264,15 +312,24 @@ export async function listAllClusters(region: string): Promise<string[]> {
  * `.../service/<service>`), so the trailing path segment is always the name.
  */
 export async function listAllServices(region: string, cluster: string): Promise<string[]> {
+
     const names: string[] = [];
     let nextToken: string | undefined;
+
     do {
+
         const out = await ecs(region).send(new ListServicesCommand({cluster, nextToken, maxResults: 100}));
+
         for (const arn of out.serviceArns ?? []) {
+
             const name = arn.split('/').pop();
+
             if (name) names.push(name);
-        }
+
+}
         nextToken = out.nextToken;
-    } while (nextToken);
+
+} while (nextToken);
     return names;
+
 }
