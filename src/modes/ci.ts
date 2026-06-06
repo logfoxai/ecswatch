@@ -13,13 +13,14 @@
 // drop-in replacement when called from `release.yml`-style workflows.
 
 import {describeService, getRecentStoppedTasks, primaryDeployment, describeTaskDef} from '../aws/ecs.js';
-import {tail as tailLogs} from '../aws/logs.js';
+import {tailAcrossStreams} from '../aws/logs.js';
 import {describeTargetHealth} from '../aws/elb.js';
 import {analyze} from '../analyze/diagnostics.js';
 import {rootCause} from '../analyze/rootCause.js';
 import * as gh from '../ghAnnotations.js';
+import {evaluateRollout} from './rollout.js';
 import {c, colorEventMessage, colorRolloutState, pill} from '../theme.js';
-import type {CliContext, ServiceSnapshot} from '../types.js';
+import type {CliContext, LogLine, ServiceSnapshot} from '../types.js';
 
 const POLL_MS = 5_000;
 const TAG = c.accent('[ECS]');
@@ -64,6 +65,10 @@ export async function runCi(ctx: CliContext, opts: CiOptions): Promise<number> {
     let lastPending = -1;
     let lastRollout = '__unset__';
     let sawInProgress = false;
+    // The task-def we expect to land on. Prefer an explicit expectation; else
+    // capture the new revision the moment we first see it deploying. Used to
+    // catch circuit-breaker rollbacks that settle COMPLETED on the old task-def.
+    let targetTaskDefArn: string | undefined = opts.expectedTaskDefinitionArn;
     const onSigint = (): void => {
 
         process.exit(130);
@@ -118,29 +123,28 @@ export async function runCi(ctx: CliContext, opts: CiOptions): Promise<number> {
                 lastRollout = rollout;
 
 }
-            if (rollout === 'IN_PROGRESS') sawInProgress = true;
-            if (rollout === 'COMPLETED' && sawInProgress) {
+            if (rollout === 'IN_PROGRESS') {
 
-                if (opts.expectedTaskDefinitionArn && primary.taskDefinitionArn !== opts.expectedTaskDefinitionArn) {
-
-                    const msg = `ECS service is stable but PRIMARY is on ${primary.taskDefinitionArn}, expected ${opts.expectedTaskDefinitionArn} (circuit breaker rollback?).`;
-
-                    gh.error(msg, {title: 'ecswatch: wrong task definition'});
-                    console.error(c.error(msg));
-                    process.removeListener('SIGINT', onSigint);
-                    return 1;
+                sawInProgress = true;
+                if (!targetTaskDefArn) targetTaskDefArn = primary.taskDefinitionArn;
 
 }
+
+            const outcome = evaluateRollout(svc, {sawInProgress, targetTaskDefinitionArn: targetTaskDefArn});
+
+            if (outcome.kind === 'success') {
+
                 console.log('');
                 printSnapshot(svc);
-                gh.notice(`Rollout complete: ${svc.serviceName} on ${primary.taskDefinition}`, {title: 'ecswatch: rollout complete'});
+                gh.notice(`Rollout complete: ${svc.serviceName} on ${outcome.taskDefinition}`, {title: 'ecswatch: rollout complete'});
                 process.removeListener('SIGINT', onSigint);
                 return 0;
 
 }
-            if (rollout === 'FAILED' && sawInProgress) {
+            if (outcome.kind === 'failed') {
 
                 console.log('');
+                console.error(c.error(`Rollout failed: ${outcome.reason}`));
                 await emitFailureReport(ctx, svc);
                 process.removeListener('SIGINT', onSigint);
                 return 1;
@@ -276,7 +280,7 @@ async function emitFailureReport(ctx: CliContext, svc: ServiceSnapshot): Promise
 
 }
 
-    let logs: ReturnType<typeof tailLogs> extends Promise<infer L> ? L : never = [];
+    let logs: LogLine[] = [];
 
     if (logGroup) {
 
@@ -284,18 +288,21 @@ async function emitFailureReport(ctx: CliContext, svc: ServiceSnapshot): Promise
 
             try {
 
-                logs = await tailLogs(ctx.region, logGroup!, {limit: 80, sinceMs: Date.now() - (15 * 60_000)});
-                if (logs.length === 0) console.log(c.muted('  (no log events in the last 15m)'));
-                for (const line of logs.slice(-60)) {
+                // Pull the newest lines from *every* task stream — not just the
+                // globally-newest N, which a surviving task's healthcheck spam
+                // dominates and which hides the crashed task's traceback during
+                // a rollback.
+                logs = await tailAcrossStreams(ctx.region, logGroup!, {
+                    sinceMs: Date.now() - (15 * 60_000),
+                    perStream: 60,
+                });
+                if (logs.length === 0) {
 
-                    const stamp = c.dim(line.timestamp.toISOString().slice(11, 19));
-                    const colored = line.severity === 'error' ? c.error(line.message)
-                        : line.severity === 'warn' ? c.warning(line.message)
-                            : c.fg(line.message);
-
-                    console.log(`  ${stamp}  ${colored}`);
+                    console.log(c.muted('  (no log events in the last 15m)'));
+                    return;
 
 }
+                printLogsByStream(logs);
 
 } catch (err) {
 
@@ -366,6 +373,40 @@ async function emitFailureReport(ctx: CliContext, svc: ServiceSnapshot): Promise
 }
 
 });
+
+}
+
+// Print log lines grouped by task stream (each task gets its own ECS stream),
+// so the failing task's output reads contiguously instead of being interleaved
+// with another task's healthchecks.
+function printLogsByStream(lines: LogLine[]): void {
+
+    const byStream = new Map<string, LogLine[]>();
+
+    for (const line of lines) {
+
+        const arr = byStream.get(line.stream);
+
+        if (arr) arr.push(line);
+        else byStream.set(line.stream, [line]);
+
+}
+
+    for (const [stream, streamLines] of byStream) {
+
+        console.log(`  ${c.accent('▏')} ${c.muted(stream || '(unknown stream)')}`);
+        for (const line of streamLines) {
+
+            const stamp = c.dim(line.timestamp.toISOString().slice(11, 19));
+            const colored = line.severity === 'error' ? c.error(line.message)
+                : line.severity === 'warn' ? c.warning(line.message)
+                    : c.fg(line.message);
+
+            console.log(`  ${stamp}  ${colored}`);
+
+}
+
+}
 
 }
 

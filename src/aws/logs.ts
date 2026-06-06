@@ -170,6 +170,76 @@ export async function tailLastLines(
 
 }
 
+/**
+ * Keep the newest `perStream` lines for *each* distinct log stream, then merge
+ * them back into one chronological list.
+ *
+ * CloudWatch FilterLogEvents returns events from every stream in a group, but
+ * any "last N by time" selection is dominated by the chattiest stream — e.g. a
+ * surviving task spamming healthchecks crowds out a crashed task's short
+ * traceback during a rollback. ECS gives every task its own stream, so capping
+ * per-stream guarantees each task (including the one that just died) is
+ * represented in the output.
+ */
+export function lastLinesPerStream(lines: LogLine[], perStream: number): LogLine[] {
+
+    if (perStream <= 0) return [];
+
+    const byStream = new Map<string, LogLine[]>();
+
+    for (const line of lines) {
+
+        const arr = byStream.get(line.stream);
+
+        if (arr) arr.push(line);
+        else byStream.set(line.stream, [line]);
+
+}
+
+    const out: LogLine[] = [];
+
+    for (const arr of byStream.values()) {
+
+        const sorted = [...arr].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+        out.push(...sorted.slice(-perStream));
+
+}
+
+    return out.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+}
+
+export interface TailAcrossOptions {
+    /** Absolute epoch ms to start from. Default: 15 minutes ago. */
+    sinceMs?: number;
+    /** Newest lines to keep per stream. Default 60. */
+    perStream?: number;
+    /** Optional log stream name prefix. */
+    streamPrefix?: string;
+}
+
+/**
+ * Fetch a recent time window across *all* of a service's task streams and keep
+ * the newest `perStream` lines from each. Unlike {@link tailLastLines} (which
+ * returns the globally-newest N and is dominated by the chattiest stream), this
+ * ensures every active task is represented — the right shape for diagnosing a
+ * failed/rolled-back rollout where the failing task's stream is the signal.
+ */
+export async function tailAcrossStreams(
+    region: string,
+    logGroup: string,
+    opts: TailAcrossOptions = {},
+): Promise<LogLine[]> {
+
+    const since = opts.sinceMs ?? (Date.now() - (15 * 60_000));
+    const perStream = opts.perStream ?? 60;
+    const window = await fetchWindow(region, logGroup, since, Date.now(), opts.streamPrefix);
+
+    return lastLinesPerStream(window, perStream);
+
+}
+
 export interface FollowOptions {
     /** Poll cadence (ms). Defaults to 3s — same ballpark as ECS rollout polling. */
     intervalMs?: number;
