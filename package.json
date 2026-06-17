@@ -40,11 +40,12 @@
     "build": "node esbuild.config.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --fix",
+    "lint:check": "eslint .",
     "test": "NODE_OPTIONS='--import tsx' kizu 'src/**/*.spec.ts'",
     "coverage": "c8 npm test",
     "dev": "node esbuild.config.mjs --watch",
     "prepare": "npm run build",
-    "prepublishOnly": "npm run validate",
+    "prepublishOnly": "npm run lint:check && npm run typecheck && npm run build && npm run test",
     "validate": "npm run lint && npm run typecheck && npm run build && npm run test"
   },
   "dependencies": {

@@ -19,5 +19,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate
-        run: npm run validate
+      # Discrete check-only steps (no --fix) so a failure points at the exact
+      # gate. `npm run validate` is the local equivalent and also auto-fixes.
+      - name: Lint (eslint)
+        run: npm run lint:check
+
+      - name: Typecheck (tsc)
+        run: npm run typecheck
+
+      - name: Build (esbuild)
+        run: npm run build
+
+      - name: Test (kizu)
+        run: npm run test
