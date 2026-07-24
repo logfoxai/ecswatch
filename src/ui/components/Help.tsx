@@ -12,7 +12,7 @@ interface Row {
 const ROWS: Row[] = [
     {keys: '1 / 2 / 3 / 4 / 5 / 6', desc: 'focus diagnostics · target health · tasks · deployments · events · logs'},
     {keys: 'r', desc: 'manual refresh now (otherwise polls every 5s)'},
-    {keys: 'a', desc: 'run LLM-assisted root-cause analysis (falls back to heuristic if unavailable)'},
+    {keys: 'a', desc: 'run root-cause analysis (heuristics when no API key is configured)'},
     {keys: 'p', desc: 'pause / resume log streaming'},
     {keys: '↑ / ↓', desc: 'when logs focused (4): scroll the log buffer one line'},
     {keys: 'PgUp / PgDn', desc: 'when logs focused: scroll the log buffer one page'},
@@ -45,7 +45,7 @@ export function Help(): React.ReactElement {
                 <Text color={colors.muted}>
                     Tip: set{' '}
                     <Text color={colors.primary}>ANTHROPIC_API_KEY</Text> or{' '}
-                    <Text color={colors.primary}>OPENAI_API_KEY</Text> to enable LLM root-cause.
+                    <Text color={colors.primary}>OPENAI_API_KEY</Text> for API-backed analysis.
                 </Text>
                 <Text color={colors.muted}>
                     Tip: override the chain with{' '}

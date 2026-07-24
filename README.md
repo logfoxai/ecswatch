@@ -5,13 +5,13 @@
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
 [![AutoRel](https://img.shields.io/badge/%F0%9F%9A%80%20AutoRel-2D4DDE)](https://github.com/mhweiner/autorel)
 
-A keen, low-friction watcher for AWS ECS services. CI-friendly streaming for GitHub Actions; full-color interactive TUI when you're at a real terminal; optional LLM-assisted root-cause analysis when something breaks.
+CLI for watching ECS service rollouts. Use it in CI for streaming deploy status, or in a terminal for an interactive TUI.
 
-- **CI mode** (`ci.yml` friendly): streams ECS events, prints colored rollout progress, exits non-zero on failure, and emits GitHub Actions annotations (`::group::`, `::error::`, `::notice::`) so failed deploys surface inline in PR checks.
-- **Interactive TUI** (default in a real terminal): live deployment panel, task list, recent events, streaming CloudWatch logs, target-group health, and a diagnostics panel with optional LLM root-cause analysis.
-- **Snapshot mode** (`inspect`): a single tabular report — `kubectl get`-style. Health, deployments, tasks, target health, events, logs tail, diagnostics, root cause. Perfect for `ecswatch inspect foo` on a laptop.
-- **Just give it a service name**: ecswatch discovers which cluster the service lives in (and caches the map), so you don't have to remember or type cluster names.
-- **LLM-assisted root cause** (optional): Anthropic + OpenAI fallback chain. If no key is configured, ecswatch degrades to a strong heuristic analyzer — it never hard-fails.
+- **CI mode**: streams rollout progress, exits non-zero on failure, emits GitHub Actions annotations (`::group::`, `::error::`, `::notice::`).
+- **TUI** (default on a TTY): deployments, tasks, events, logs, target health, diagnostics.
+- **Snapshot** (`inspect`): one-shot tabular report.
+- **Cluster discovery**: resolves `(cluster, service)` from the service name and caches the map.
+- **Root-cause analysis** (optional): uses Anthropic/OpenAI when API keys are set; otherwise heuristics only.
 
 ## Install
 
@@ -99,12 +99,12 @@ If no key is configured, ecswatch uses heuristic diagnostics only — it still t
 | --------- | ----------------------------------------------------------------------- |
 | `1`–`6`   | focus deployments · tasks · events · logs · target health · diagnostics |
 | `r`       | refresh now                                                             |
-| `a`       | run LLM-assisted root-cause analysis                                    |
+| `a`       | run root-cause analysis                                                 |
 | `p`       | pause / resume log streaming                                            |
 | `?`       | toggle help                                                             |
 | `q` / `^C`| quit                                                                    |
 
-The TUI auto-runs root-cause analysis the first time it sees a `FAILED` rollout — that's almost always why you opened it.
+The TUI runs analysis automatically on the first `FAILED` rollout.
 
 ## CI integration
 
@@ -131,7 +131,7 @@ CI output is colored via 24-bit ANSI (looks the same in iTerm, Alacritty, and th
 | Logs           | Live tail of the CloudWatch log group resolved from the task definition.                                                                                                                      |
 | Target health  | ALB target group health with per-target unhealthy reasons (`Target.FailedHealthChecks`, `Target.Timeout`, etc.).                                                                              |
 | Diagnostics    | Heuristic detections: placement failures, image pull failures, essential container exits, ALB unhealthy, circuit breaker trips, OOM kills, IAM init errors, capacity mismatches.              |
-| Root cause     | One- or two-sentence summary + bulleted causes + bulleted fixes. LLM-driven if a key is configured; heuristic fallback otherwise.                                                             |
+| Root cause     | Summary, likely causes, and suggested fixes. Uses configured API keys when present; otherwise heuristics.                                                                                   |
 
 ## Architecture
 

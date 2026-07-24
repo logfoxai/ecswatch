@@ -18,7 +18,7 @@ interface Key {
 const KEYS: Key[] = [
     {keys: '1-6', label: 'panel'},
     {keys: 'r', label: 'refresh'},
-    {keys: 'a', label: 'analyze (LLM)'},
+    {keys: 'a', label: 'analyze'},
     {keys: 'p', label: 'pause logs'},
     {keys: '?', label: 'help'},
     {keys: 'q', label: 'quit'},
