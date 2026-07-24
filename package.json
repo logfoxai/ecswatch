@@ -1,7 +1,7 @@
 {
   "name": "ecswatch",
   "version": "0.0.0-autorel",
-  "description": "Beautiful interactive TUI for inspecting AWS ECS services + a CI-friendly streaming mode for GitHub Actions. Optional LLM-assisted root-cause analysis for failed rollouts.",
+  "description": "CLI for watching ECS service rollouts in CI and an interactive terminal UI.",
   "keywords": [
     "aws",
     "ecs",
