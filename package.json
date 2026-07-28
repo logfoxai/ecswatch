@@ -46,7 +46,8 @@
     "dev": "node esbuild.config.mjs --watch",
     "prepare": "npm run build",
     "prepublishOnly": "npm run lint:check && npm run typecheck && npm run build && npm run test",
-    "validate": "npm run lint && npm run typecheck && npm run build && npm run test"
+    "validate": "npm run check:package-json && npm run lint && npm run typecheck && npm run build && npm run test",
+    "check:package-json": "node scripts/check-no-file-deps.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.99.0",
