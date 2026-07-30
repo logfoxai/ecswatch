@@ -1,5 +1,7 @@
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
+import packageJson from 'eslint-plugin-package-json';
+import * as jsoncParser from 'jsonc-eslint-parser';
 
 export default tseslint.config(
     {
@@ -143,6 +145,19 @@ export default tseslint.config(
         files: ['**/*.tsx'],
         rules: {
             '@typescript-eslint/explicit-function-return-type': 'off',
+        },
+    },
+
+    {
+        files: ['package.json'],
+        languageOptions: {
+            parser: jsoncParser,
+        },
+        plugins: {
+            'package-json': packageJson,
+        },
+        rules: {
+            'package-json/no-local-dependencies': ['error', {ignorePrivate: false}],
         },
     },
 );
