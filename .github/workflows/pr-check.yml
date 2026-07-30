@@ -7,6 +7,7 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -17,6 +18,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
+        timeout-minutes: 5
         run: npm ci
 
       # Discrete check-only steps (no --fix) so a failure points at the exact
